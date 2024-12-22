@@ -598,8 +598,6 @@ internal static class MemberKindExtensions
 /// </summary>
 internal sealed class Reflector
 {
-    private readonly HashSet<string> collectedPropertyNames = new();
-    private readonly HashSet<string> collectedFieldNames = new();
     private readonly List<FieldInfo> selectedFields = new();
     private List<PropertyInfo> selectedProperties = new();
 
@@ -613,6 +611,8 @@ internal sealed class Reflector
 
     private void LoadProperties(Type typeToReflect, MemberKind kind)
     {
+        var collectedPropertyNames = new HashSet<string>();
+
         while (typeToReflect != null && typeToReflect != typeof(object))
         {
             BindingFlags flags = BindingFlags.DeclaredOnly | BindingFlags.Public | BindingFlags.NonPublic;
@@ -620,11 +620,11 @@ internal sealed class Reflector
 
             var allProperties = typeToReflect.GetProperties(flags);
 
-            AddNormalProperties(kind, allProperties);
+            AddNormalProperties(kind, allProperties, collectedPropertyNames);
 
-            AddExplicitlyImplementedProperties(kind, allProperties);
+            AddExplicitlyImplementedProperties(kind, allProperties, collectedPropertyNames);
 
-            AddInterfaceProperties(typeToReflect, kind, flags);
+            AddInterfaceProperties(typeToReflect, kind, flags, collectedPropertyNames);
 
             // Move to the base type
             typeToReflect = typeToReflect.BaseType;
@@ -633,7 +633,8 @@ internal sealed class Reflector
         selectedProperties = selectedProperties.Where(x => !x.IsIndexer()).ToList();
     }
 
-    private void AddNormalProperties(MemberKind kind, PropertyInfo[] allProperties)
+    private void AddNormalProperties(MemberKind kind, PropertyInfo[] allProperties,
+        HashSet<string> collectedPropertyNames)
     {
         if (kind.HasFlag(MemberKind.Public) || kind.HasFlag(MemberKind.Internal) ||
             kind.HasFlag(MemberKind.ExplicitlyImplemented))
@@ -655,7 +656,8 @@ internal sealed class Reflector
                (kind.HasFlag(MemberKind.Internal) && prop.IsInternal());
     }
 
-    private void AddExplicitlyImplementedProperties(MemberKind kind, PropertyInfo[] allProperties)
+    private void AddExplicitlyImplementedProperties(MemberKind kind, PropertyInfo[] allProperties,
+        HashSet<string> collectedPropertyNames)
     {
         if (kind.HasFlag(MemberKind.ExplicitlyImplemented))
         {
@@ -674,7 +676,9 @@ internal sealed class Reflector
         }
     }
 
-    private void AddInterfaceProperties(Type typeToReflect, MemberKind kind, BindingFlags flags)
+#pragma warning disable AV1561
+    private void AddInterfaceProperties(Type typeToReflect, MemberKind kind, BindingFlags flags,
+        HashSet<string> collectedPropertyNames)
     {
         if (kind.HasFlag(MemberKind.DefaultInterfaceProperties) || typeToReflect.IsInterface)
         {
@@ -693,9 +697,12 @@ internal sealed class Reflector
             }
         }
     }
+#pragma warning restore AV1561
 
     private void LoadFields(Type typeToReflect, MemberKind kind)
     {
+        var collectedFieldNames = new HashSet<string>();
+
         while (typeToReflect != null && typeToReflect != typeof(object))
         {
             BindingFlags flags = BindingFlags.DeclaredOnly | BindingFlags.Public | BindingFlags.NonPublic;
