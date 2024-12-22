@@ -606,7 +606,7 @@ internal sealed class Reflector
         LoadProperties(typeToReflect, kind);
         LoadFields(typeToReflect, kind);
 
-        Members = selectedProperties.Concat<MemberInfo>(selectedFields).ToArray();
+        Members = [.. selectedProperties, .. selectedFields];
     }
 
     private void LoadProperties(Type typeToReflect, MemberKind kind)
