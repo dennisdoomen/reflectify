@@ -8,6 +8,7 @@ using Nuke.Common.Tooling;
 using Nuke.Common.Tools.DotNet;
 using Nuke.Common.Tools.GitVersion;
 using Nuke.Common.Tools.ReportGenerator;
+using Nuke.Common.Utilities;
 using Nuke.Common.Utilities.Collections;
 using Nuke.Components;
 using static Nuke.Common.Tools.DotNet.DotNetTasks;
