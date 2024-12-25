@@ -67,7 +67,7 @@ internal static class TypeMetaDataExtensions
     public static bool HasAttribute<TAttribute>(this Type type)
         where TAttribute : Attribute
     {
-        return type.GetCustomAttributes<TAttribute>(inherit: false).Any();
+        return type.IsDefined(typeof(TAttribute), inherit: false);
     }
 
     /// <summary>
@@ -92,7 +92,7 @@ internal static class TypeMetaDataExtensions
     public static bool HasAttributeInHierarchy<TAttribute>(this Type type)
         where TAttribute : Attribute
     {
-        return type.GetCustomAttributes<TAttribute>(inherit: true).Any();
+        return type.IsDefined(typeof(TAttribute), inherit: true);
     }
 
     /// <summary>
