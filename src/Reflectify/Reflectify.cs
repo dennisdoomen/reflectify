@@ -192,7 +192,7 @@ internal static class TypeMetaDataExtensions
             return false;
         }
 
-#if !(NET47 || NETSTANDARD2_0)
+#if NETCOREAPP2_0_OR_GREATER || NET471_OR_GREATER || NETSTANDARD2_1_OR_GREATER
         return typeof(ITuple).IsAssignableFrom(type);
 #else
         Type openType = type.GetGenericTypeDefinition();
@@ -524,10 +524,10 @@ internal static class PropertyInfoExtensions
     /// </summary>
     public static bool IsExplicitlyImplemented(this PropertyInfo prop)
     {
-#if NETCOREAPP3_0_OR_GREATER
-        return prop.Name.Contains('.', StringComparison.OrdinalIgnoreCase);
-#else
+#if NETCOREAPP2_1_OR_GREATER || NETSTANDARD2_1_OR_GREATER
         return prop.Name.Contains('.');
+#else
+        return prop.Name.IndexOf('.') != -1;
 #endif
     }
 
