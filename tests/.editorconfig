@@ -1,5 +1,10 @@
 [*.cs]
 
+
+# Purpose: Do not expose generic lists
+# Reason: We don't care about this in tests
+dotnet_diagnostic.CA1002.severity = none
+
 # Purpose: Do not nest type GetProperties. 
 # Reason: We don't care about this in tests
 dotnet_diagnostic.CA1034.severity = none
@@ -31,6 +36,10 @@ dotnet_diagnostic.CA1822.severity = none
 # Purpose: Type 'SuperClass' can be sealed
 # Reason: We don't care about this in tests
 dotnet_diagnostic.CA1852.severity = none
+
+# Prefer using collection abstraction instead of implementation
+# Reason: We don't care about this in tests
+dotnet_diagnostic.MA0016.severity = none
 
 # Purpose: Elements must be documented
 # Reason: Not needed for tests
