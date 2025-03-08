@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Globalization;
 using FluentAssertions;
 using JetBrains.Annotations;
@@ -242,6 +243,33 @@ public class TypeMemberExtensionsSpecs
                 new { Name = "NewProperty" },
                 new { Name = "InterfaceProperty" },
                 new { Name = "NormalField" },
+            ]);
+        }
+
+        private interface ICollectionInterface
+        {
+            [UsedImplicitly]
+            IReadOnlyCollection<int> Items { get; }
+        }
+
+        private abstract class BaseCollection
+        {
+            public List<int> Items { get; } = new();
+        }
+
+        private sealed class CollectionImplementation : BaseCollection, ICollectionInterface
+        {
+            IReadOnlyCollection<int> ICollectionInterface.Items => Items;
+        }
+
+        [Fact]
+        public void Normal_properties_are_always_preferred_over_explicit_properties()
+        {
+            var properties = typeof(CollectionImplementation).GetProperties(
+                MemberKind.Public | MemberKind.ExplicitlyImplemented);
+
+            properties.Should().BeEquivalentTo([
+                new { Name = "Items", PropertyType = typeof(List<int>) }
             ]);
         }
     }

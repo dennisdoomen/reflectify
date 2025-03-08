@@ -6,6 +6,7 @@
 #nullable disable
 
 using System;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -599,7 +600,7 @@ internal static class MemberKindExtensions
 internal sealed class Reflector
 {
     private readonly List<FieldInfo> selectedFields = new();
-    private List<PropertyInfo> selectedProperties = new();
+    private readonly OrderedPropertyCollection selectedProperties = new();
 
     public Reflector(Type typeToReflect, MemberKind kind)
     {
@@ -611,8 +612,6 @@ internal sealed class Reflector
 
     private void LoadProperties(Type typeToReflect, MemberKind kind)
     {
-        var collectedPropertyNames = new HashSet<string>();
-
         while (typeToReflect != null && typeToReflect != typeof(object))
         {
             BindingFlags flags = BindingFlags.DeclaredOnly | BindingFlags.Public | BindingFlags.NonPublic;
@@ -620,31 +619,27 @@ internal sealed class Reflector
 
             var allProperties = typeToReflect.GetProperties(flags);
 
-            AddNormalProperties(kind, allProperties, collectedPropertyNames);
+            AddNormalProperties(kind, allProperties);
 
-            AddExplicitlyImplementedProperties(kind, allProperties, collectedPropertyNames);
+            AddExplicitlyImplementedProperties(kind, allProperties);
 
-            AddInterfaceProperties(typeToReflect, kind, flags, collectedPropertyNames);
+            AddInterfaceProperties(typeToReflect, kind, flags);
 
             // Move to the base type
             typeToReflect = typeToReflect.BaseType;
         }
-
-        selectedProperties = selectedProperties.Where(x => !x.IsIndexer()).ToList();
     }
 
-    private void AddNormalProperties(MemberKind kind, PropertyInfo[] allProperties,
-        HashSet<string> collectedPropertyNames)
+    private void AddNormalProperties(MemberKind kind, PropertyInfo[] allProperties)
     {
         if (kind.HasFlag(MemberKind.Public) || kind.HasFlag(MemberKind.Internal) ||
             kind.HasFlag(MemberKind.ExplicitlyImplemented))
         {
             foreach (var property in allProperties)
             {
-                if (HasVisibility(kind, property) && !property.IsExplicitlyImplemented() &&
-                    collectedPropertyNames.Add(property.Name))
+                if (HasVisibility(kind, property) && !property.IsExplicitlyImplemented())
                 {
-                    selectedProperties.Add(property);
+                    selectedProperties.AddNormal(property);
                 }
             }
         }
@@ -656,29 +651,22 @@ internal sealed class Reflector
                (kind.HasFlag(MemberKind.Internal) && prop.IsInternal());
     }
 
-    private void AddExplicitlyImplementedProperties(MemberKind kind, PropertyInfo[] allProperties,
-        HashSet<string> collectedPropertyNames)
+    private void AddExplicitlyImplementedProperties(MemberKind kind, PropertyInfo[] allProperties)
     {
         if (kind.HasFlag(MemberKind.ExplicitlyImplemented))
         {
-            foreach (var p in allProperties)
+            foreach (var property in allProperties)
             {
-                if (p.IsExplicitlyImplemented())
+                if (property.IsExplicitlyImplemented())
                 {
-                    var name = p.Name.Split('.').Last();
-
-                    if (collectedPropertyNames.Add(name))
-                    {
-                        selectedProperties.Add(p);
-                    }
+                    selectedProperties.AddExplicitlyImplemented(property);
                 }
             }
         }
     }
 
 #pragma warning disable AV1561
-    private void AddInterfaceProperties(Type typeToReflect, MemberKind kind, BindingFlags flags,
-        HashSet<string> collectedPropertyNames)
+    private void AddInterfaceProperties(Type typeToReflect, MemberKind kind, BindingFlags flags)
     {
         if (kind.HasFlag(MemberKind.DefaultInterfaceProperties) || typeToReflect.IsInterface)
         {
@@ -688,10 +676,9 @@ internal sealed class Reflector
             {
                 foreach (var prop in interfaceType.GetProperties(flags))
                 {
-                    if ((!prop.IsAbstract() || typeToReflect.IsInterface) &&
-                        collectedPropertyNames.Add(prop.Name))
+                    if (!prop.IsAbstract() || typeToReflect.IsInterface)
                     {
-                        selectedProperties.Add(prop);
+                        selectedProperties.AddFromInterface(prop);
                     }
                 }
             }
@@ -734,4 +721,68 @@ internal sealed class Reflector
     public PropertyInfo[] Properties => selectedProperties.ToArray();
 
     public FieldInfo[] Fields => selectedFields.ToArray();
+
+    private class OrderedPropertyCollection : IEnumerable<PropertyInfo>
+    {
+        private readonly Dictionary<string, PropertyKind> kindMap = new();
+        private readonly List<(string Name, PropertyInfo Property)> propertiesWithName = new();
+
+        public IEnumerator<PropertyInfo> GetEnumerator()
+        {
+            return propertiesWithName.Select(x => x.Property).GetEnumerator();
+        }
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
+
+        private enum PropertyKind
+        {
+            Normal,
+            ExplicitlyImplemented,
+            Interface
+        }
+
+        public void AddExplicitlyImplemented(PropertyInfo property)
+        {
+            var name = property.Name.Split('.').Last();
+
+            Add(name, property, PropertyKind.ExplicitlyImplemented);
+        }
+
+        public void AddNormal(PropertyInfo property)
+        {
+            Add(property.Name, property, PropertyKind.Normal);
+        }
+
+        public void AddFromInterface(PropertyInfo property)
+        {
+            Add(property.Name, property, PropertyKind.Interface);
+        }
+
+        private void Add(string name, PropertyInfo property, PropertyKind kind)
+        {
+            if (property.IsIndexer())
+            {
+                // We explicitly skip indexers
+            }
+            else if (!kindMap.TryGetValue(name, out var existingKind))
+            {
+                kindMap[name] = kind;
+                propertiesWithName.Add((name, property));
+            }
+            else if (existingKind == PropertyKind.ExplicitlyImplemented && kind == PropertyKind.Normal)
+            {
+                // Normal properties have priority over interface properties
+                kindMap[name] = kind;
+                propertiesWithName.RemoveAll(x => x.Name == name);
+                propertiesWithName.Add((name, property));
+            }
+            else
+            {
+                // Property with that name already exists
+            }
+        }
+    }
 }
