@@ -154,6 +154,18 @@ internal static class TypeMetaDataExtensions
     /// The expected type can also be an open generic type definition.
     /// </remarks>
     /// <returns><see langword="true" /> if the actual type is the same as, or inherits from, the expected type; otherwise, <see langword="false" />.</returns>
+    public static bool IsSameOrInherits<TExpectedType>(this Type actualType)
+    {
+        return actualType.IsSameOrInherits(typeof(TExpectedType));
+    }
+
+    /// <summary>
+    /// Determines whether the actual type is the same as, or inherits from, the expected type.
+    /// </summary>
+    /// <remarks>
+    /// The expected type can also be an open generic type definition.
+    /// </remarks>
+    /// <returns><see langword="true" /> if the actual type is the same as, or inherits from, the expected type; otherwise, <see langword="false" />.</returns>
     public static bool IsSameOrInherits(this Type actualType, Type expectedType)
     {
         return actualType == expectedType ||
@@ -781,8 +793,8 @@ internal sealed class Reflector
             }
             else
             {
-                // Property with that name already exists
-            }
+            // Property with that name already exists
         }
     }
+}
 }

@@ -325,6 +325,69 @@ public class TypeMetaDataExtensionsSpecs
         }
     }
 
+    public class IsSameOrInheritsGeneric
+    {
+        [Fact]
+        public void Can_detect_if_a_type_is_the_same_as_another()
+        {
+            // Act
+            bool result = typeof(string).IsSameOrInherits<string>();
+
+            // Assert
+            result.Should().BeTrue();
+        }
+
+        [Fact]
+        public void Can_detect_if_a_type_is_derived_from_another()
+        {
+            // Act
+            bool result = typeof(DerivedFromOpenGeneric).IsSameOrInherits<OpenGenericClass<string>>();
+
+            // Assert
+            result.Should().BeTrue();
+        }
+
+        [Fact]
+        public void Can_detect_if_a_type_is_not_derived_from_another()
+        {
+            // Act
+            bool result = typeof(SomeOtherClass).IsSameOrInherits<OpenGenericClass<string>>();
+
+            // Assert
+            result.Should().BeFalse();
+        }
+
+        [Fact]
+        public void Can_detect_if_a_type_is_the_same_as_another_interface()
+        {
+            // Act
+            bool result = typeof(IOpenGenericInterface<string>).IsSameOrInherits<IOpenGenericInterface<string>>();
+
+            // Assert
+            result.Should().BeTrue();
+        }
+
+        [Fact]
+        public void Can_detect_if_a_type_is_derived_from_another_interface()
+        {
+            // Act
+            bool result = typeof(IClosedGenericInterface).IsSameOrInherits<IOpenGenericInterface<string>>();
+
+            // Assert
+            result.Should().BeTrue();
+        }
+
+        [Fact]
+        public void Can_detect_if_a_type_is_not_derived_from_another_interface()
+        {
+            // Act
+            bool result = typeof(ISomeOtherInterface).IsSameOrInherits<IOpenGenericInterface<string>>();
+
+            // Assert
+            result.Should().BeFalse();
+        }
+    }
+
     public class IsSameOrInherits
     {
         [Fact]
