@@ -1,0 +1,11 @@
+blank_issues_enabled: true
+contact_links:
+  - name: 📚 Documentation
+    url: https://github.com/dennisdoomen/reflectify
+    about: Read our comprehensive documentation.
+  - name: ⭐ Sponsor Reflectify
+    url: https://github.com/sponsors/dennisdoomen
+    about: Help the continued development.
+  - name: 💬 Ask on Stack Overflow
+    url: https://stackoverflow.com/questions/tagged/reflectify
+    about: The best place for asking general purpose questions.
