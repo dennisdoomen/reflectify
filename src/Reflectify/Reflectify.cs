@@ -184,6 +184,14 @@ internal static class TypeMetaDataExtensions
     }
 
     /// <summary>
+    /// Returns <see langword="true" /> if the type is a delegate type; otherwise, <see langword="false" />.
+    /// </summary>
+    public static bool IsDelegate(this Type type)
+    {
+        return typeof(Delegate).IsAssignableFrom(type);
+    }
+
+    /// <summary>
     /// Returns <see langword="true" /> if the type is a compiler-generated type, or <see langword="false" /> otherwise.
     /// </summary>
     /// <remarks>

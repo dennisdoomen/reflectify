@@ -236,6 +236,16 @@ public class TypeMetaDataExtensionsSpecs
             // Act / Assert
             typeof(SomeOtherClass).HasAttributeInHierarchy<InheritableAttribute>().Should().BeFalse();
         }
+
+        [Fact]
+        public void A_predicate_cannot_be_null()
+        {
+            // Act
+            Action act = () => typeof(ClassWithAttribute).HasAttributeInHierarchy<InheritableAttribute>(null);
+
+            // Assert
+            act.Should().Throw<ArgumentNullException>();
+        }
     }
 
     public class GetMatchingAttributes
@@ -753,6 +763,41 @@ public class TypeMetaDataExtensionsSpecs
         private record SomeClassRecord(string SomeProperty);
     }
 
+    public class IsDelegate
+    {
+        [Fact]
+        public void A_delegate_is_a_delegate()
+        {
+            // Act
+            bool result = typeof(Action).IsDelegate();
+
+            // Assert
+            result.Should().BeTrue();
+        }
+
+        [Fact]
+        public void A_custom_delegate_is_a_delegate()
+        {
+            // Act
+            bool result = typeof(CustomDelegate).IsDelegate();
+
+            // Assert
+            result.Should().BeTrue();
+        }
+
+        [Fact]
+        public void A_class_is_not_a_delegate()
+        {
+            // Act
+            bool result = typeof(SomeOtherClass).IsDelegate();
+
+            // Assert
+            result.Should().BeFalse();
+        }
+
+        private delegate void CustomDelegate();
+    }
+
     public class IsKeyValuePair
     {
         [Fact]
@@ -779,7 +824,7 @@ public class TypeMetaDataExtensionsSpecs
         public void A_key_value_pair_of_string_is()
         {
             // Act
-            bool result = typeof(KeyValuePair<string, string>).IsKeyValuePair();
+            bool result = typeof(KeyValuePair<string, int>).IsKeyValuePair();
 
             // Assert
             result.Should().BeTrue();
@@ -826,6 +871,39 @@ public class TypeMetaDataExtensionsSpecs
 
             // Assert
             result.Should().BeFalse();
+        }
+    }
+
+    public class NullableOrActualType
+    {
+        [Fact]
+        public void Returns_underlying_type_for_nullable_type()
+        {
+            // Act
+            var result = typeof(int?).NullableOrActualType();
+
+            // Assert
+            result.Should().Be<int>();
+        }
+
+        [Fact]
+        public void Returns_same_type_for_non_nullable_type()
+        {
+            // Act
+            var result = typeof(int).NullableOrActualType();
+
+            // Assert
+            result.Should().Be<int>();
+        }
+
+        [Fact]
+        public void Returns_same_type_for_reference_type()
+        {
+            // Act
+            var result = typeof(string).NullableOrActualType();
+
+            // Assert
+            result.Should().Be<string>();
         }
     }
 
