@@ -137,6 +137,8 @@ This library wouldn't have been possible without the following tools, packages a
 ## You may also like
 
 * [My Blog](https://www.dennisdoomen.com)
+* [Mockly](https://github.com/dennisdoomen/mockly?tab=readme-ov-file#readme) - Fluent HTTP mocking for .NET like it should have been done
+* [Pathy](https://github.com/dennisdoomen/pathy?tab=readme-ov-file#readme) - Fluently building and using file and directory paths without binary dependencies
 * [FluentAssertions](https://github.com/fluentassertions/fluentassertions) - Extension methods to fluently assert the outcome of .NET tests
 * [C# Coding Guidelines](https://csharpcodingguidelines.com/) - Forkable coding guidelines for all C# versions
 
