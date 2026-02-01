@@ -19,6 +19,16 @@ namespace Reflectify;
 internal static class TypeMetaDataExtensions
 {
     /// <summary>
+    /// Returns the name of the type without the generic backtick and the type arguments.
+    /// </summary>
+    public static string GetNonGenericName(this Type type)
+    {
+        string name = type.Name;
+        int index = name.IndexOf('`');
+        return index == -1 ? name : name.Substring(0, index);
+    }
+
+    /// <summary>
     /// Returns <see langword="true" /> if the type is derived from an open-generic type, or <see langword="false" /> otherwise.
     /// </summary>
     public static bool IsDerivedFromOpenGeneric(this Type type, Type openGenericType)
