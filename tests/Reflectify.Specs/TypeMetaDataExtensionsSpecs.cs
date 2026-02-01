@@ -9,6 +9,23 @@ namespace Reflectify.Specs;
 
 public class TypeMetaDataExtensionsSpecs
 {
+    public class GetNonGenericName
+    {
+        [Theory]
+        [InlineData(typeof(string), "String")]
+        [InlineData(typeof(List<string>), "List")]
+        [InlineData(typeof(Dictionary<int, string>), "Dictionary")]
+        [InlineData(typeof(int?), "Nullable")]
+        public void Can_get_non_generic_name(Type type, string expectedName)
+        {
+            // Act
+            string result = type.GetNonGenericName();
+
+            // Assert
+            result.Should().Be(expectedName);
+        }
+    }
+
     public class IsDerivedFromOpenGeneric
     {
         [Fact]
