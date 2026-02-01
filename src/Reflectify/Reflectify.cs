@@ -201,7 +201,6 @@ internal static class TypeMetaDataExtensions
     {
         return type.HasAttribute<CompilerGeneratedAttribute>() ||
                type.IsRecord() ||
-               type.IsAnonymous() ||
                type.IsTuple();
     }
 
