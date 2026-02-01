@@ -199,7 +199,8 @@ internal static class TypeMetaDataExtensions
     /// </remarks>
     public static bool IsCompilerGenerated(this Type type)
     {
-        return type.IsRecord() ||
+        return type.HasAttribute<CompilerGeneratedAttribute>() ||
+               type.IsRecord() ||
                type.IsAnonymous() ||
                type.IsTuple();
     }

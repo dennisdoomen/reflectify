@@ -526,6 +526,21 @@ public class TypeMetaDataExtensionsSpecs
             result.Should().BeFalse();
         }
 
+        [Fact]
+        public void A_type_with_compiler_generated_attribute_is_compiler_generated()
+        {
+            // Act
+            bool result = typeof(TypeWithCompilerGeneratedAttribute).IsCompilerGenerated();
+
+            // Assert
+            result.Should().BeTrue();
+        }
+
+        [System.Runtime.CompilerServices.CompilerGenerated]
+        private class TypeWithCompilerGeneratedAttribute
+        {
+        }
+
         private record SomeRecord(string SomeProperty);
     }
 
