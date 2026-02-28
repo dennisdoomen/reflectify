@@ -539,6 +539,34 @@ internal static class MemberInfoExtensions
     }
 }
 
+internal static class ParameterInfoExtensions
+{
+    /// <summary>
+    /// Returns <see langword="true" /> if the parameter is decorated with the specific <typeparamref name="TAttribute"/>,
+    /// or <see langword="false" /> otherwise.
+    /// </summary>
+    public static bool HasAttribute<TAttribute>(this ParameterInfo parameter)
+        where TAttribute : Attribute
+    {
+        return parameter.IsDefined(typeof(TAttribute), inherit: false);
+    }
+
+    /// <summary>
+    /// Returns <see langword="true" /> if the parameter is decorated with the specific <typeparamref name="TAttribute"/> <i>and</i>
+    /// that attribute instance matches the predicate, or <see langword="false" /> otherwise.
+    /// </summary>
+    public static bool HasAttribute<TAttribute>(this ParameterInfo parameter, Func<TAttribute, bool> predicate)
+        where TAttribute : Attribute
+    {
+        if (predicate is null)
+        {
+            throw new ArgumentNullException(nameof(predicate));
+        }
+
+        return parameter.GetCustomAttributes<TAttribute>(inherit: false).Any(predicate);
+    }
+}
+
 internal static class PropertyInfoExtensions
 {
     /// <summary>
