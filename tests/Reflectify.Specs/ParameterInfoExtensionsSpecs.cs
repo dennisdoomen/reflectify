@@ -62,6 +62,26 @@ public class ParameterInfoExtensionsSpecs
         act.Should().Throw<ArgumentNullException>().WithMessage("*predicate*");
     }
 
+    [Fact]
+    public void Can_determine_a_parameter_has_an_attribute_in_hierarchy()
+    {
+        // Arrange
+        ParameterInfo parameter = typeof(ClassWithAttributedParameter).GetMethod("Method")!.GetParameters()[0];
+
+        // Act / Assert
+        parameter.HasAttributeInHierarchy<CustomParameterAttribute>().Should().BeTrue();
+    }
+
+    [Fact]
+    public void Can_determine_a_parameter_does_not_have_an_attribute_in_hierarchy()
+    {
+        // Arrange
+        ParameterInfo parameter = typeof(ClassWithAttributedParameter).GetMethod("Method")!.GetParameters()[0];
+
+        // Act / Assert
+        parameter.HasAttributeInHierarchy<CLSCompliantAttribute>().Should().BeFalse();
+    }
+
     [AttributeUsage(AttributeTargets.Parameter)]
     private sealed class CustomParameterAttribute : Attribute
     {

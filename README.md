@@ -84,7 +84,7 @@ and `FindExplicitConversionOperators`, and methods via `FindMethod`, `FindParame
 
 For `ParameterInfo`, you can use:
 
-* `HasAttribute` to check whether a parameter is decorated with a specific attribute, with an optional predicate to filter on attribute properties.
+* `HasAttribute` and `HasAttributeInHierarchy` to check whether a parameter is decorated with a specific attribute, with an optional predicate to filter on attribute properties.
 
 Other extension methods act on `Type` directly and include:
 
