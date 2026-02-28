@@ -565,6 +565,16 @@ internal static class ParameterInfoExtensions
 
         return parameter.GetCustomAttributes<TAttribute>(inherit: false).Any(predicate);
     }
+
+    /// <summary>
+    /// Returns <see langword="true" /> if the parameter or one of its overridden definitions are decorated with the
+    /// specific <typeparamref name="TAttribute"/>.
+    /// </summary>
+    public static bool HasAttributeInHierarchy<TAttribute>(this ParameterInfo parameter)
+        where TAttribute : Attribute
+    {
+        return parameter.IsDefined(typeof(TAttribute), inherit: true);
+    }
 }
 
 internal static class PropertyInfoExtensions
