@@ -845,6 +845,18 @@ public class TypeMetaDataExtensionsSpecs
             result.Should().BeFalse();
         }
 
+#if NETCOREAPP2_1_OR_GREATER || NETSTANDARD2_1_OR_GREATER
+        [Fact]
+        public void A_memory_of_T_is()
+        {
+            // Act
+            bool result = typeof(Memory<int>).IsStruct();
+
+            // Assert
+            result.Should().BeTrue();
+        }
+#endif
+
         private struct SomeStruct
         {
         }
@@ -883,6 +895,16 @@ public class TypeMetaDataExtensionsSpecs
         {
             // Act
             bool result = typeof(SomeRefStruct).IsRefStruct();
+
+            // Assert
+            result.Should().BeTrue();
+        }
+
+        [Fact]
+        public void A_span_of_T_is()
+        {
+            // Act
+            bool result = typeof(Span<int>).IsRefStruct();
 
             // Assert
             result.Should().BeTrue();
