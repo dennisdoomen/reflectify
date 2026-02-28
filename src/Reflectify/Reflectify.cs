@@ -303,6 +303,30 @@ internal static class TypeMetaDataExtensions
     {
         return type.IsGenericType && type.GetGenericTypeDefinition() == typeof(KeyValuePair<,>);
     }
+
+    /// <summary>
+    /// Returns <see langword="true" /> if the type is a struct (i.e., a value type that is not an enum);
+    /// otherwise, <see langword="false" />.
+    /// </summary>
+    public static bool IsStruct(this Type type)
+    {
+        return type.IsValueType && !type.IsEnum;
+    }
+
+    /// <summary>
+    /// Returns <see langword="true" /> if the type is a ref struct; otherwise, <see langword="false" />.
+    /// </summary>
+    /// <remarks>
+    /// Returns <see langword="false" /> on .NET versions that do not support ref structs.
+    /// </remarks>
+    public static bool IsRefStruct(this Type type)
+    {
+#if NETCOREAPP2_1_OR_GREATER || NETSTANDARD2_1_OR_GREATER
+        return type.IsDefined(typeof(System.Runtime.CompilerServices.IsByRefLikeAttribute), false);
+#else
+        return false;
+#endif
+    }
 }
 
 internal static class TypeMemberExtensions

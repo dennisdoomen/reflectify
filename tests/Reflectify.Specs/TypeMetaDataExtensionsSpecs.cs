@@ -813,6 +813,91 @@ public class TypeMetaDataExtensionsSpecs
         private delegate void CustomDelegate();
     }
 
+    public class IsStruct
+    {
+        [Fact]
+        public void A_struct_is()
+        {
+            // Act
+            bool result = typeof(SomeStruct).IsStruct();
+
+            // Assert
+            result.Should().BeTrue();
+        }
+
+        [Fact]
+        public void A_class_is_not()
+        {
+            // Act
+            bool result = typeof(SomeOtherClass).IsStruct();
+
+            // Assert
+            result.Should().BeFalse();
+        }
+
+        [Fact]
+        public void An_enum_is_not()
+        {
+            // Act
+            bool result = typeof(SomeEnum).IsStruct();
+
+            // Assert
+            result.Should().BeFalse();
+        }
+
+        private struct SomeStruct
+        {
+        }
+
+        private enum SomeEnum
+        {
+            Value
+        }
+    }
+
+    public class IsRefStruct
+    {
+        [Fact]
+        public void A_regular_struct_is_not()
+        {
+            // Act
+            bool result = typeof(SomeStruct).IsRefStruct();
+
+            // Assert
+            result.Should().BeFalse();
+        }
+
+        [Fact]
+        public void A_class_is_not()
+        {
+            // Act
+            bool result = typeof(SomeOtherClass).IsRefStruct();
+
+            // Assert
+            result.Should().BeFalse();
+        }
+
+#if NETCOREAPP2_1_OR_GREATER || NETSTANDARD2_1_OR_GREATER
+        [Fact]
+        public void A_ref_struct_is()
+        {
+            // Act
+            bool result = typeof(SomeRefStruct).IsRefStruct();
+
+            // Assert
+            result.Should().BeTrue();
+        }
+
+        private ref struct SomeRefStruct
+        {
+        }
+#endif
+
+        private struct SomeStruct
+        {
+        }
+    }
+
     public class IsKeyValuePair
     {
         [Fact]
