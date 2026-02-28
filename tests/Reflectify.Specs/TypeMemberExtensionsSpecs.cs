@@ -232,6 +232,18 @@ public class TypeMemberExtensionsSpecs
         }
 
         [Fact]
+        public void Can_find_public_static_fields()
+        {
+            // Act
+            var fields = typeof(SuperClass).GetFields(MemberKind.Public | MemberKind.Static);
+
+            // Assert
+            fields.Should().BeEquivalentTo([
+                new { Name = "StaticField", FieldType = typeof(bool) }
+            ]);
+        }
+
+        [Fact]
         public void Can_find_all_members()
         {
             // Act
@@ -243,6 +255,21 @@ public class TypeMemberExtensionsSpecs
                 new { Name = "NewProperty" },
                 new { Name = "InterfaceProperty" },
                 new { Name = "NormalField" },
+            ]);
+        }
+
+        [Fact]
+        public void Can_find_all_internal_members()
+        {
+            // Act
+            var members = typeof(SuperClass).GetMembers(MemberKind.Internal);
+
+            // Assert
+            members.Should().BeEquivalentTo([
+                new { Name = "InternalProperty" },
+                new { Name = "InternalProtectedProperty" },
+                new { Name = "InternalField" },
+                new { Name = "ProtectedInternalField" },
             ]);
         }
 
@@ -439,7 +466,34 @@ public class TypeMemberExtensionsSpecs
             });
         }
 
-        // TODO: add tests for interfaces
+        [Fact]
+        public void Can_find_an_indexer_on_an_interface()
+        {
+            // Act
+            var indexer = typeof(IWithIndexer).FindIndexer(MemberKind.Public, typeof(int));
+
+            // Assert
+            indexer.Should().NotBeNull();
+            indexer.GetIndexParameters().Should().BeEquivalentTo(new[]
+            {
+                new { ParameterType = typeof(int) }
+            });
+        }
+
+        [Fact]
+        public void Cannot_find_a_non_existing_indexer_on_an_interface()
+        {
+            // Act
+            var indexer = typeof(IWithIndexer).FindIndexer(MemberKind.Public, typeof(string));
+
+            // Assert
+            indexer.Should().BeNull();
+        }
+
+        private interface IWithIndexer
+        {
+            string this[int n] { get; }
+        }
     }
 
     public class FindField
@@ -658,6 +712,13 @@ public class TypeMemberExtensionsSpecs
             // Act / Assert
             typeof(ClassWithMethods).HasMethod("MethodWithThreeParameters", MemberKind.Public, typeof(string),
                 typeof(int), typeof(bool)).Should().BeTrue();
+        }
+
+        [Fact]
+        public void Cannot_detect_a_non_existing_method()
+        {
+            // Act / Assert
+            typeof(ClassWithMethods).HasMethod("NonExistingMethod", MemberKind.Public).Should().BeFalse();
         }
 
         [Fact]
