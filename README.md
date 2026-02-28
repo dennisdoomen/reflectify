@@ -82,6 +82,10 @@ To get more metadata from a `PropertyInfo`, you can use extensions methods like:
 Similarly, you can find indexers using `FindIndexers`, conversion operators through `FindImplicitConversionOperators`
 and `FindExplicitConversionOperators`, and methods via `FindMethod`, `FindParameterlessMethod` and `HasMethod`.
 
+For `ParameterInfo`, you can use:
+
+* `HasAttribute` to check whether a parameter is decorated with a specific attribute, with an optional predicate to filter on attribute properties.
+
 Other extension methods act on `Type` directly and include:
 
 * `IsDerivedFromOpenGeneric` and `GetClosedGenericInterfaces`
