@@ -689,18 +689,12 @@ internal static class MemberKindExtensions
 /// <summary>
 /// Helper class to get all the public and internal fields and properties from a type.
 /// </summary>
-internal sealed class Reflector
+internal sealed class Reflector(Type typeToReflect, MemberKind kind)
 {
     private readonly List<FieldInfo> selectedFields = new();
     private readonly OrderedPropertyCollection selectedProperties = new();
-
-    public Reflector(Type typeToReflect, MemberKind kind)
-    {
-        LoadProperties(typeToReflect, kind);
-        LoadFields(typeToReflect, kind);
-
-        Members = [.. selectedProperties, .. selectedFields];
-    }
+    private bool hasLoadedProperties;
+    private bool hasLoadedFields;
 
     private void LoadProperties(Type typeToReflect, MemberKind kind)
     {
@@ -808,16 +802,45 @@ internal sealed class Reflector
                (kind.HasFlag(MemberKind.Internal) && (field.IsAssembly || field.IsFamilyOrAssembly));
     }
 
-    public MemberInfo[] Members { get; }
+    public MemberInfo[] Members => [.. Properties, .. Fields];
 
-    public PropertyInfo[] Properties => selectedProperties.ToArray();
+    public PropertyInfo[] Properties
+    {
+        get
+        {
+            if (!hasLoadedProperties)
+            {
+                LoadProperties(typeToReflect, kind);
+                hasLoadedProperties = true;
+            }
 
-    public FieldInfo[] Fields => selectedFields.ToArray();
+            return selectedProperties.ToArray();
+        }
+    }
+
+    public FieldInfo[] Fields
+    {
+        get
+        {
+            if (!hasLoadedFields)
+            {
+                LoadFields(typeToReflect, kind);
+                hasLoadedFields = true;
+            }
+
+            return selectedFields.ToArray();
+        }
+    }
 
     private class OrderedPropertyCollection : IEnumerable<PropertyInfo>
     {
         private readonly Dictionary<string, PropertyKind> kindMap = new();
         private readonly List<(string Name, PropertyInfo Property)> propertiesWithName = new();
+
+        public PropertyInfo[] ToArray()
+        {
+            return propertiesWithName.Select(x => x.Property).ToArray();
+        }
 
         public IEnumerator<PropertyInfo> GetEnumerator()
         {
