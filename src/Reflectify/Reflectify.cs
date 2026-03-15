@@ -322,7 +322,7 @@ internal static class TypeMetaDataExtensions
     public static bool IsRefStruct(this Type type)
     {
 #if NETCOREAPP2_1_OR_GREATER || NETSTANDARD2_1_OR_GREATER
-        return type.IsDefined(typeof(System.Runtime.CompilerServices.IsByRefLikeAttribute), false);
+        return type.IsDefined(typeof(IsByRefLikeAttribute), false);
 #else
         return false;
 #endif
@@ -672,12 +672,12 @@ internal static class MemberKindExtensions
     {
         BindingFlags flags = BindingFlags.Default;
 
-        if (kind.HasFlag(MemberKind.Public))
+        if ((kind & MemberKind.Public) != MemberKind.None)
         {
             flags |= BindingFlags.Public;
         }
 
-        if (kind.HasFlag(MemberKind.Internal))
+        if ((kind & MemberKind.Internal) != MemberKind.None)
         {
             flags |= BindingFlags.NonPublic;
         }
@@ -689,17 +689,54 @@ internal static class MemberKindExtensions
 /// <summary>
 /// Helper class to get all the public and internal fields and properties from a type.
 /// </summary>
-internal sealed class Reflector
+internal sealed class Reflector(Type typeToReflect, MemberKind kind)
 {
     private readonly List<FieldInfo> selectedFields = new();
     private readonly OrderedPropertyCollection selectedProperties = new();
+    private readonly object lazyLoadingLock = new();
+    private volatile PropertyInfo[] cachedProperties;
+    private volatile FieldInfo[] cachedFields;
 
-    public Reflector(Type typeToReflect, MemberKind kind)
+    public MemberInfo[] Members => [.. Properties, .. Fields];
+
+    public PropertyInfo[] Properties
     {
-        LoadProperties(typeToReflect, kind);
-        LoadFields(typeToReflect, kind);
+        get
+        {
+            if (cachedProperties is null)
+            {
+                lock (lazyLoadingLock)
+                {
+                    if (cachedProperties is null)
+                    {
+                        LoadProperties(typeToReflect, kind);
+                        cachedProperties = selectedProperties.ToArray();
+                    }
+                }
+            }
 
-        Members = [.. selectedProperties, .. selectedFields];
+            return cachedProperties;
+        }
+    }
+
+    public FieldInfo[] Fields
+    {
+        get
+        {
+            if (cachedFields is null)
+            {
+                lock (lazyLoadingLock)
+                {
+                    if (cachedFields is null)
+                    {
+                        LoadFields(typeToReflect, kind);
+                        cachedFields = selectedFields.ToArray();
+                    }
+                }
+            }
+
+            return cachedFields;
+        }
     }
 
     private void LoadProperties(Type typeToReflect, MemberKind kind)
@@ -707,7 +744,7 @@ internal sealed class Reflector
         while (typeToReflect != null && typeToReflect != typeof(object))
         {
             BindingFlags flags = BindingFlags.DeclaredOnly | BindingFlags.Public | BindingFlags.NonPublic;
-            flags |= kind.HasFlag(MemberKind.Static) ? BindingFlags.Static : BindingFlags.Instance;
+            flags |= (kind & MemberKind.Static) != MemberKind.None ? BindingFlags.Static : BindingFlags.Instance;
 
             var allProperties = typeToReflect.GetProperties(flags);
 
@@ -724,8 +761,7 @@ internal sealed class Reflector
 
     private void AddNormalProperties(MemberKind kind, PropertyInfo[] allProperties)
     {
-        if (kind.HasFlag(MemberKind.Public) || kind.HasFlag(MemberKind.Internal) ||
-            kind.HasFlag(MemberKind.ExplicitlyImplemented))
+        if ((kind & (MemberKind.Public | MemberKind.Internal | MemberKind.ExplicitlyImplemented)) != MemberKind.None)
         {
             foreach (var property in allProperties)
             {
@@ -739,13 +775,13 @@ internal sealed class Reflector
 
     private static bool HasVisibility(MemberKind kind, PropertyInfo prop)
     {
-        return (kind.HasFlag(MemberKind.Public) && prop.IsPublic()) ||
-               (kind.HasFlag(MemberKind.Internal) && prop.IsInternal());
+        return ((kind & MemberKind.Public) != MemberKind.None && prop.IsPublic()) ||
+               ((kind & MemberKind.Internal) != MemberKind.None && prop.IsInternal());
     }
 
     private void AddExplicitlyImplementedProperties(MemberKind kind, PropertyInfo[] allProperties)
     {
-        if (kind.HasFlag(MemberKind.ExplicitlyImplemented))
+        if ((kind & MemberKind.ExplicitlyImplemented) != MemberKind.None)
         {
             foreach (var property in allProperties)
             {
@@ -760,7 +796,7 @@ internal sealed class Reflector
 #pragma warning disable AV1561
     private void AddInterfaceProperties(Type typeToReflect, MemberKind kind, BindingFlags flags)
     {
-        if (kind.HasFlag(MemberKind.DefaultInterfaceProperties) || typeToReflect.IsInterface)
+        if ((kind & MemberKind.DefaultInterfaceProperties) != MemberKind.None || typeToReflect.IsInterface)
         {
             var interfaces = typeToReflect.GetInterfaces();
 
@@ -785,7 +821,7 @@ internal sealed class Reflector
         while (typeToReflect != null && typeToReflect != typeof(object))
         {
             BindingFlags flags = BindingFlags.DeclaredOnly | BindingFlags.Public | BindingFlags.NonPublic;
-            flags |= kind.HasFlag(MemberKind.Static) ? BindingFlags.Static : BindingFlags.Instance;
+            flags |= (kind & MemberKind.Static) != MemberKind.None ? BindingFlags.Static : BindingFlags.Instance;
 
             var files = typeToReflect.GetFields(flags);
 
@@ -804,24 +840,33 @@ internal sealed class Reflector
 
     private static bool HasVisibility(MemberKind kind, FieldInfo field)
     {
-        return (kind.HasFlag(MemberKind.Public) && field.IsPublic) ||
-               (kind.HasFlag(MemberKind.Internal) && (field.IsAssembly || field.IsFamilyOrAssembly));
+        return ((kind & MemberKind.Public) != MemberKind.None && field.IsPublic) ||
+               ((kind & MemberKind.Internal) != MemberKind.None && (field.IsAssembly || field.IsFamilyOrAssembly));
     }
-
-    public MemberInfo[] Members { get; }
-
-    public PropertyInfo[] Properties => selectedProperties.ToArray();
-
-    public FieldInfo[] Fields => selectedFields.ToArray();
 
     private class OrderedPropertyCollection : IEnumerable<PropertyInfo>
     {
         private readonly Dictionary<string, PropertyKind> kindMap = new();
         private readonly List<(string Name, PropertyInfo Property)> propertiesWithName = new();
 
+        public PropertyInfo[] ToArray()
+        {
+            var result = new PropertyInfo[propertiesWithName.Count];
+
+            for (int i = 0; i < propertiesWithName.Count; i++)
+            {
+                result[i] = propertiesWithName[i].Property;
+            }
+
+            return result;
+        }
+
         public IEnumerator<PropertyInfo> GetEnumerator()
         {
-            return propertiesWithName.Select(x => x.Property).GetEnumerator();
+            foreach (var (_, property) in propertiesWithName)
+            {
+                yield return property;
+            }
         }
 
         IEnumerator IEnumerable.GetEnumerator()
@@ -866,15 +911,24 @@ internal sealed class Reflector
             }
             else if (existingKind == PropertyKind.ExplicitlyImplemented && kind == PropertyKind.Normal)
             {
-                // Normal properties have priority over interface properties
+                // Normal properties have priority over explicitly implemented properties
                 kindMap[name] = kind;
-                propertiesWithName.RemoveAll(x => x.Name == name);
+
+                for (int i = 0; i < propertiesWithName.Count; i++)
+                {
+                    if (propertiesWithName[i].Name == name)
+                    {
+                        propertiesWithName.RemoveAt(i);
+                        break;
+                    }
+                }
+
                 propertiesWithName.Add((name, property));
             }
             else
             {
-            // Property with that name already exists
+                // Property with that name already exists
+            }
         }
     }
-}
 }
