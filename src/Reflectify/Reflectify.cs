@@ -690,8 +690,6 @@ internal static class MemberKindExtensions
 /// </summary>
 internal sealed class Reflector(Type typeToReflect, MemberKind kind)
 {
-    private readonly List<FieldInfo> selectedFields = new();
-    private readonly OrderedPropertyCollection selectedProperties = new();
     private readonly object lazyLoadingLock = new();
     private volatile PropertyInfo[] cachedProperties;
     private volatile FieldInfo[] cachedFields;
@@ -708,8 +706,7 @@ internal sealed class Reflector(Type typeToReflect, MemberKind kind)
                 {
                     if (cachedProperties is null)
                     {
-                        LoadProperties(typeToReflect, kind);
-                        cachedProperties = selectedProperties.ToArray();
+                        cachedProperties = LoadProperties(typeToReflect, kind);
                     }
                 }
             }
@@ -728,8 +725,7 @@ internal sealed class Reflector(Type typeToReflect, MemberKind kind)
                 {
                     if (cachedFields is null)
                     {
-                        LoadFields(typeToReflect, kind);
-                        cachedFields = selectedFields.ToArray();
+                        cachedFields = LoadFields(typeToReflect, kind);
                     }
                 }
             }
@@ -738,8 +734,10 @@ internal sealed class Reflector(Type typeToReflect, MemberKind kind)
         }
     }
 
-    private void LoadProperties(Type typeToReflect, MemberKind kind)
+    private static PropertyInfo[] LoadProperties(Type typeToReflect, MemberKind kind)
     {
+        var selectedProperties = new OrderedPropertyCollection();
+
         while (typeToReflect != null && typeToReflect != typeof(object))
         {
             BindingFlags flags = BindingFlags.DeclaredOnly | BindingFlags.Public | BindingFlags.NonPublic;
@@ -747,18 +745,20 @@ internal sealed class Reflector(Type typeToReflect, MemberKind kind)
 
             var allProperties = typeToReflect.GetProperties(flags);
 
-            AddNormalProperties(kind, allProperties);
+            AddNormalProperties(kind, allProperties, selectedProperties);
 
-            AddExplicitlyImplementedProperties(kind, allProperties);
+            AddExplicitlyImplementedProperties(kind, allProperties, selectedProperties);
 
-            AddInterfaceProperties(typeToReflect, kind, flags);
+            AddInterfaceProperties(typeToReflect, kind, flags, selectedProperties);
 
             // Move to the base type
             typeToReflect = typeToReflect.BaseType;
         }
+
+        return selectedProperties.ToArray();
     }
 
-    private void AddNormalProperties(MemberKind kind, PropertyInfo[] allProperties)
+    private static void AddNormalProperties(MemberKind kind, PropertyInfo[] allProperties, OrderedPropertyCollection selectedProperties)
     {
         if ((kind & (MemberKind.Public | MemberKind.Internal | MemberKind.ExplicitlyImplemented)) != MemberKind.None)
         {
@@ -778,7 +778,7 @@ internal sealed class Reflector(Type typeToReflect, MemberKind kind)
                ((kind & MemberKind.Internal) != MemberKind.None && prop.IsInternal());
     }
 
-    private void AddExplicitlyImplementedProperties(MemberKind kind, PropertyInfo[] allProperties)
+    private static void AddExplicitlyImplementedProperties(MemberKind kind, PropertyInfo[] allProperties, OrderedPropertyCollection selectedProperties)
     {
         if ((kind & MemberKind.ExplicitlyImplemented) != MemberKind.None)
         {
@@ -793,7 +793,7 @@ internal sealed class Reflector(Type typeToReflect, MemberKind kind)
     }
 
 #pragma warning disable AV1561
-    private void AddInterfaceProperties(Type typeToReflect, MemberKind kind, BindingFlags flags)
+    private static void AddInterfaceProperties(Type typeToReflect, MemberKind kind, BindingFlags flags, OrderedPropertyCollection selectedProperties)
     {
         if ((kind & MemberKind.DefaultInterfaceProperties) != MemberKind.None || typeToReflect.IsInterface)
         {
@@ -813,8 +813,9 @@ internal sealed class Reflector(Type typeToReflect, MemberKind kind)
     }
 #pragma warning restore AV1561
 
-    private void LoadFields(Type typeToReflect, MemberKind kind)
+    private static FieldInfo[] LoadFields(Type typeToReflect, MemberKind kind)
     {
+        var selectedFields = new List<FieldInfo>();
         var collectedFieldNames = new HashSet<string>();
 
         while (typeToReflect != null && typeToReflect != typeof(object))
@@ -835,6 +836,8 @@ internal sealed class Reflector(Type typeToReflect, MemberKind kind)
             // Move to the base type
             typeToReflect = typeToReflect.BaseType;
         }
+
+        return selectedFields.ToArray();
     }
 
     private static bool HasVisibility(MemberKind kind, FieldInfo field)
