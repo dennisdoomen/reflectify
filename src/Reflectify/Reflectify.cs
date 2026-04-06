@@ -907,8 +907,8 @@ internal sealed class Reflector(Type typeToReflect, MemberKind kind)
                 {
                     if (propertiesWithName[i].Name == name)
                     {
-                        propertiesWithName.RemoveAt(i);
-                        break;
+                        propertiesWithName[i] = (name, property);
+                        return;
                     }
                 }
 
