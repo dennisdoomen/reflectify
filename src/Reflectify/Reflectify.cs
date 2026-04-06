@@ -6,7 +6,6 @@
 #nullable disable
 
 using System;
-using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
@@ -844,7 +843,7 @@ internal sealed class Reflector(Type typeToReflect, MemberKind kind)
                ((kind & MemberKind.Internal) != MemberKind.None && (field.IsAssembly || field.IsFamilyOrAssembly));
     }
 
-    private class OrderedPropertyCollection : IEnumerable<PropertyInfo>
+    private class OrderedPropertyCollection
     {
         private readonly Dictionary<string, PropertyKind> kindMap = new();
         private readonly List<(string Name, PropertyInfo Property)> propertiesWithName = new();
@@ -859,19 +858,6 @@ internal sealed class Reflector(Type typeToReflect, MemberKind kind)
             }
 
             return result;
-        }
-
-        public IEnumerator<PropertyInfo> GetEnumerator()
-        {
-            foreach (var (_, property) in propertiesWithName)
-            {
-                yield return property;
-            }
-        }
-
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return GetEnumerator();
         }
 
         private enum PropertyKind
