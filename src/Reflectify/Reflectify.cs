@@ -251,7 +251,7 @@ internal static class TypeMetaDataExtensions
     /// </summary>
     public static bool IsAnonymous(this Type type)
     {
-        if (!type.FullName!.Contains("AnonymousType"))
+        if (!type.FullName!.Contains("AnonymousType", StringComparison.Ordinal))
         {
             return false;
         }
