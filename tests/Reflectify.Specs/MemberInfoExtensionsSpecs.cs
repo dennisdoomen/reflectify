@@ -1,6 +1,9 @@
 using System;
+using System.Reflection;
 using FluentAssertions;
 using Xunit;
+
+#pragma warning disable CS0649 // Field is never assigned to, and will always have its default value
 
 namespace Reflectify.Specs;
 
@@ -102,6 +105,48 @@ public class MemberInfoExtensionsSpecs
         [Obsolete("Specific reason")]
         public void Method()
         {
+        }
+    }
+
+    public class IsRequired
+    {
+        [Fact]
+        public void A_required_property_member_is_required()
+        {
+            // Arrange
+            MemberInfo member = typeof(ClassWithRequiredMembers).GetProperty("RequiredProperty");
+
+            // Act / Assert
+            member.IsRequired().Should().BeTrue();
+        }
+
+        [Fact]
+        public void A_required_field_member_is_required()
+        {
+            // Arrange
+            MemberInfo member = typeof(ClassWithRequiredMembers).GetField("RequiredField");
+
+            // Act / Assert
+            member.IsRequired().Should().BeTrue();
+        }
+
+        [Fact]
+        public void A_normal_property_member_is_not_required()
+        {
+            // Arrange
+            MemberInfo member = typeof(ClassWithRequiredMembers).GetProperty("NormalProperty");
+
+            // Act / Assert
+            member.IsRequired().Should().BeFalse();
+        }
+
+        private class ClassWithRequiredMembers
+        {
+            public required string RequiredProperty { get; set; }
+
+            public required string RequiredField;
+
+            public string NormalProperty { get; set; }
         }
     }
 }

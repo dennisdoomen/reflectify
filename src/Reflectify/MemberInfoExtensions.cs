@@ -50,4 +50,22 @@ internal static class MemberInfoExtensions
         // https://github.com/dotnet/runtime/issues/30219
         return Attribute.IsDefined(member, typeof(TAttribute), inherit: true);
     }
+
+    /// <summary>
+    /// Returns <see langword="true" /> if the member is marked with the C# 11 <see langword="required" />
+    /// modifier, or <see langword="false" /> otherwise.
+    /// </summary>
+    /// <remarks>
+    /// The C# compiler emits a <c>System.Runtime.CompilerServices.RequiredMemberAttribute</c> on the member itself
+    /// as well as on its declaring type. This method only inspects the attribute on the member itself; it does not
+    /// check whether the declaring type as a whole is marked as having required members. On older target
+    /// frameworks that attribute type may not be part of the BCL and could instead come from a
+    /// PolySharp-polyfilled assembly, so it is matched by full name instead of comparing Type instances
+    /// (which would fail across assemblies).
+    /// </remarks>
+    public static bool IsRequired(this MemberInfo member)
+    {
+        return member.CustomAttributes.Any(attribute =>
+            attribute.AttributeType.FullName == "System.Runtime.CompilerServices.RequiredMemberAttribute");
+    }
 }

@@ -923,6 +923,83 @@ public class TypeMetaDataExtensionsSpecs
         }
     }
 
+    public class IsReadOnlyStruct
+    {
+        [Fact]
+        public void A_readonly_struct_is()
+        {
+            // Act
+            bool result = typeof(SomeReadOnlyStruct).IsReadOnlyStruct();
+
+            // Assert
+            result.Should().BeTrue();
+        }
+
+        [Fact]
+        public void A_normal_struct_is_not()
+        {
+            // Act
+            bool result = typeof(SomeStruct).IsReadOnlyStruct();
+
+            // Assert
+            result.Should().BeFalse();
+        }
+
+        [Fact]
+        public void A_class_is_not()
+        {
+            // Act
+            bool result = typeof(SomeOtherClass).IsReadOnlyStruct();
+
+            // Assert
+            result.Should().BeFalse();
+        }
+
+        private readonly struct SomeReadOnlyStruct
+        {
+        }
+
+        private struct SomeStruct
+        {
+        }
+    }
+
+    public class IsFileLocal
+    {
+        [Fact]
+        public void A_file_local_type_is()
+        {
+            // Act
+            bool result = typeof(FileLocalTestType).IsFileLocal();
+
+            // Assert
+            result.Should().BeTrue();
+        }
+
+        [Fact]
+        public void A_normal_class_is_not()
+        {
+            // Act
+            bool result = typeof(SomeOtherClass).IsFileLocal();
+
+            // Assert
+            result.Should().BeFalse();
+        }
+
+        [Fact]
+        public void An_anonymous_type_is_not()
+        {
+            // Arrange
+            var subject = new { SomeProperty = "SomeValue" };
+
+            // Act
+            bool result = subject.GetType().IsFileLocal();
+
+            // Assert
+            result.Should().BeFalse();
+        }
+    }
+
     public class IsKeyValuePair
     {
         [Fact]
@@ -1557,4 +1634,10 @@ public class TypeMetaDataExtensionsSpecs
     {
         public string Message { get; } = message;
     }
+}
+
+// C# `file` classes can only be tested via a fixture type declared with the `file` modifier at file (top-level)
+// scope in the same source file, so it lives here rather than nested inside TypeMetaDataExtensionsSpecs.
+file class FileLocalTestType
+{
 }

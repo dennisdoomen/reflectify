@@ -5,6 +5,7 @@
 
 #nullable disable
 
+using System.Linq;
 using System.Reflection;
 
 namespace Reflectify;
@@ -63,5 +64,52 @@ internal static class PropertyInfoExtensions
     public static bool IsAbstract(this PropertyInfo prop)
     {
         return prop.GetMethod is { IsAbstract: true } || prop.SetMethod is { IsAbstract: true };
+    }
+
+    /// <summary>
+    /// Returns <see langword="true" /> if the property is a C# 9 init-only property (i.e. it can only be
+    /// assigned through an object initializer or from within a constructor), or <see langword="false" /> otherwise.
+    /// </summary>
+    public static bool IsInitOnly(this PropertyInfo prop)
+    {
+        MethodInfo setMethod = prop.SetMethod;
+
+        if (setMethod is null)
+        {
+            return false;
+        }
+
+        // The compiler marks the setter's return parameter with a required custom modifier of type
+        // System.Runtime.CompilerServices.IsExternalInit. On older target frameworks that type may not be part of
+        // the BCL and could instead come from a PolySharp-polyfilled assembly, so match by full name instead of
+        // comparing Type instances (which would fail across assemblies).
+        return setMethod.ReturnParameter.GetRequiredCustomModifiers()
+            .Any(modifier => modifier.FullName == "System.Runtime.CompilerServices.IsExternalInit");
+    }
+
+    /// <summary>
+    /// Returns <see langword="true" /> if the property is marked with the C# 11 <see langword="required" />
+    /// modifier, or <see langword="false" /> otherwise.
+    /// </summary>
+    /// <remarks>
+    /// The C# compiler emits a <c>System.Runtime.CompilerServices.RequiredMemberAttribute</c> on the member itself
+    /// as well as on its declaring type. This method only inspects the attribute on the property itself; it does
+    /// not check whether the declaring type as a whole is marked as having required members.
+    /// </remarks>
+    public static bool IsRequired(this PropertyInfo prop)
+    {
+        return MemberInfoExtensions.IsRequired((MemberInfo)prop);
+    }
+
+    /// <summary>
+    /// Returns <see langword="true" /> if the property can be assigned a value outside of an object initializer or
+    /// constructor, or <see langword="false" /> otherwise.
+    /// </summary>
+    /// <remarks>
+    /// An init-only property (see <see cref="IsInitOnly"/>) has a setter but is not considered writable.
+    /// </remarks>
+    public static bool IsWritable(this PropertyInfo prop)
+    {
+        return prop.SetMethod is not null && !prop.IsInitOnly();
     }
 }
