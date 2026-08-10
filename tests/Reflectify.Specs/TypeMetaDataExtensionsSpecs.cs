@@ -1,5 +1,8 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using FluentAssertions;
 using Xunit;
 
@@ -1027,6 +1030,463 @@ public class TypeMetaDataExtensionsSpecs
             // Assert
             result.Should().Be<string>();
         }
+    }
+
+    public class IsNullable
+    {
+        [Fact]
+        public void A_nullable_value_type_is()
+        {
+            // Act
+            bool result = typeof(int?).IsNullable();
+
+            // Assert
+            result.Should().BeTrue();
+        }
+
+        [Fact]
+        public void A_non_nullable_value_type_is_not()
+        {
+            // Act
+            bool result = typeof(int).IsNullable();
+
+            // Assert
+            result.Should().BeFalse();
+        }
+
+        [Fact]
+        public void A_reference_type_is_not()
+        {
+            // Act
+            bool result = typeof(string).IsNullable();
+
+            // Assert
+            result.Should().BeFalse();
+        }
+    }
+
+    public class IsEnumerable
+    {
+        [Fact]
+        public void A_list_is()
+        {
+            // Act
+            bool result = typeof(List<int>).IsEnumerable();
+
+            // Assert
+            result.Should().BeTrue();
+        }
+
+        [Fact]
+        public void An_array_is()
+        {
+            // Act
+            bool result = typeof(int[]).IsEnumerable();
+
+            // Assert
+            result.Should().BeTrue();
+        }
+
+        [Fact]
+        public void A_plain_non_generic_enumerable_is()
+        {
+            // Act
+            bool result = typeof(PlainEnumerable).IsEnumerable();
+
+            // Assert
+            result.Should().BeTrue();
+        }
+
+        [Fact]
+        public void A_string_is_explicitly_excluded()
+        {
+            // Act
+            bool result = typeof(string).IsEnumerable();
+
+            // Assert
+            result.Should().BeFalse();
+        }
+
+        [Fact]
+        public void A_plain_class_is_not()
+        {
+            // Act
+            bool result = typeof(SomeOtherClass).IsEnumerable();
+
+            // Assert
+            result.Should().BeFalse();
+        }
+    }
+
+    public class GetElementTypeOfEnumerable
+    {
+        [Fact]
+        public void Returns_the_element_type_of_a_list()
+        {
+            // Act
+            Type result = typeof(List<string>).GetElementTypeOfEnumerable();
+
+            // Assert
+            result.Should().Be(typeof(string));
+        }
+
+        [Fact]
+        public void Returns_the_element_type_of_an_array()
+        {
+            // Act
+            Type result = typeof(int[]).GetElementTypeOfEnumerable();
+
+            // Assert
+            result.Should().Be(typeof(int));
+        }
+
+        [Fact]
+        public void Returns_object_for_a_type_implementing_ienumerable_of_t_more_than_once()
+        {
+            // Act
+            Type result = typeof(EnumerableOfIntAndString).GetElementTypeOfEnumerable();
+
+            // Assert
+            result.Should().Be(typeof(object));
+        }
+
+        [Fact]
+        public void Returns_object_for_a_plain_non_generic_enumerable()
+        {
+            // Act
+            Type result = typeof(PlainEnumerable).GetElementTypeOfEnumerable();
+
+            // Assert
+            result.Should().Be(typeof(object));
+        }
+
+        [Fact]
+        public void Returns_null_for_a_string()
+        {
+            // Act
+            Type result = typeof(string).GetElementTypeOfEnumerable();
+
+            // Assert
+            result.Should().BeNull();
+        }
+
+        [Fact]
+        public void Returns_null_for_a_non_enumerable_type()
+        {
+            // Act
+            Type result = typeof(SomeOtherClass).GetElementTypeOfEnumerable();
+
+            // Assert
+            result.Should().BeNull();
+        }
+    }
+
+    public class IsDictionary
+    {
+        [Fact]
+        public void A_dictionary_is()
+        {
+            // Act
+            bool result = typeof(Dictionary<string, int>).IsDictionary();
+
+            // Assert
+            result.Should().BeTrue();
+        }
+
+        [Fact]
+        public void A_read_only_dictionary_is()
+        {
+            // Act
+            bool result = typeof(IReadOnlyDictionary<string, int>).IsDictionary();
+
+            // Assert
+            result.Should().BeTrue();
+        }
+
+        [Fact]
+        public void A_list_is_not()
+        {
+            // Act
+            bool result = typeof(List<string>).IsDictionary();
+
+            // Assert
+            result.Should().BeFalse();
+        }
+
+        [Fact]
+        public void A_plain_class_is_not()
+        {
+            // Act
+            bool result = typeof(SomeOtherClass).IsDictionary();
+
+            // Assert
+            result.Should().BeFalse();
+        }
+    }
+
+    public class TryGetDictionaryTypes
+    {
+        [Fact]
+        public void Can_get_the_key_and_value_types_of_a_dictionary()
+        {
+            // Act
+            bool result = typeof(Dictionary<string, int>).TryGetDictionaryTypes(out Type keyType, out Type valueType);
+
+            // Assert
+            result.Should().BeTrue();
+            keyType.Should().Be(typeof(string));
+            valueType.Should().Be(typeof(int));
+        }
+
+        [Fact]
+        public void Can_get_the_key_and_value_types_of_a_read_only_dictionary()
+        {
+            // Act
+            bool result = typeof(IReadOnlyDictionary<string, int>).TryGetDictionaryTypes(out Type keyType, out Type valueType);
+
+            // Assert
+            result.Should().BeTrue();
+            keyType.Should().Be(typeof(string));
+            valueType.Should().Be(typeof(int));
+        }
+
+        [Fact]
+        public void Returns_false_for_a_non_dictionary_type()
+        {
+            // Act
+            bool result = typeof(List<string>).TryGetDictionaryTypes(out Type keyType, out Type valueType);
+
+            // Assert
+            result.Should().BeFalse();
+            keyType.Should().BeNull();
+            valueType.Should().BeNull();
+        }
+    }
+
+    public class IsAwaitable
+    {
+        [Fact]
+        public void A_task_is()
+        {
+            // Act
+            bool result = typeof(Task).IsAwaitable();
+
+            // Assert
+            result.Should().BeTrue();
+        }
+
+        [Fact]
+        public void A_task_of_t_is()
+        {
+            // Act
+            bool result = typeof(Task<int>).IsAwaitable();
+
+            // Assert
+            result.Should().BeTrue();
+        }
+
+        [Fact]
+        public void A_value_task_is()
+        {
+            // Act
+            bool result = typeof(ValueTask).IsAwaitable();
+
+            // Assert
+            result.Should().BeTrue();
+        }
+
+        [Fact]
+        public void A_value_task_of_t_is()
+        {
+            // Act
+            bool result = typeof(ValueTask<int>).IsAwaitable();
+
+            // Assert
+            result.Should().BeTrue();
+        }
+
+        [Fact]
+        public void A_custom_duck_typed_awaitable_is()
+        {
+            // Act
+            bool result = typeof(CustomAwaitable).IsAwaitable();
+
+            // Assert
+            result.Should().BeTrue();
+        }
+
+        [Fact]
+        public void A_non_awaitable_type_is_not()
+        {
+            // Act
+            bool result = typeof(SomeOtherClass).IsAwaitable();
+
+            // Assert
+            result.Should().BeFalse();
+        }
+    }
+
+    public class IsTaskLike
+    {
+        [Fact]
+        public void A_task_is()
+        {
+            // Act
+            bool result = typeof(Task).IsTaskLike();
+
+            // Assert
+            result.Should().BeTrue();
+        }
+
+        [Fact]
+        public void A_task_of_t_is()
+        {
+            // Act
+            bool result = typeof(Task<int>).IsTaskLike();
+
+            // Assert
+            result.Should().BeTrue();
+        }
+
+        [Fact]
+        public void A_value_task_is()
+        {
+            // Act
+            bool result = typeof(ValueTask).IsTaskLike();
+
+            // Assert
+            result.Should().BeTrue();
+        }
+
+        [Fact]
+        public void A_value_task_of_t_is()
+        {
+            // Act
+            bool result = typeof(ValueTask<int>).IsTaskLike();
+
+            // Assert
+            result.Should().BeTrue();
+        }
+
+        [Fact]
+        public void A_custom_duck_typed_awaitable_is_not()
+        {
+            // Act
+            bool result = typeof(CustomAwaitable).IsTaskLike();
+
+            // Assert
+            result.Should().BeFalse();
+        }
+
+        [Fact]
+        public void A_non_awaitable_type_is_not()
+        {
+            // Act
+            bool result = typeof(SomeOtherClass).IsTaskLike();
+
+            // Assert
+            result.Should().BeFalse();
+        }
+    }
+
+    public class IsNumeric
+    {
+        [Theory]
+        [InlineData(typeof(byte))]
+        [InlineData(typeof(sbyte))]
+        [InlineData(typeof(short))]
+        [InlineData(typeof(ushort))]
+        [InlineData(typeof(int))]
+        [InlineData(typeof(uint))]
+        [InlineData(typeof(long))]
+        [InlineData(typeof(ulong))]
+        [InlineData(typeof(float))]
+        [InlineData(typeof(double))]
+        [InlineData(typeof(decimal))]
+        public void A_numeric_type_is(Type type)
+        {
+            // Act
+            bool result = type.IsNumeric();
+
+            // Assert
+            result.Should().BeTrue();
+        }
+
+        [Theory]
+        [InlineData(typeof(bool))]
+        [InlineData(typeof(char))]
+        [InlineData(typeof(string))]
+        [InlineData(typeof(SomeOtherClass))]
+        [InlineData(typeof(int?))]
+        public void A_non_numeric_type_is_not(Type type)
+        {
+            // Act
+            bool result = type.IsNumeric();
+
+            // Assert
+            result.Should().BeFalse();
+        }
+    }
+
+    public class IsPrimitiveOrString
+    {
+        [Theory]
+        [InlineData(typeof(int))]
+        [InlineData(typeof(bool))]
+        [InlineData(typeof(char))]
+        [InlineData(typeof(double))]
+        [InlineData(typeof(string))]
+        public void A_primitive_or_string_type_is(Type type)
+        {
+            // Act
+            bool result = type.IsPrimitiveOrString();
+
+            // Assert
+            result.Should().BeTrue();
+        }
+
+        [Theory]
+        [InlineData(typeof(decimal))]
+        [InlineData(typeof(SomeOtherClass))]
+        [InlineData(typeof(int?))]
+        public void A_non_primitive_and_non_string_type_is_not(Type type)
+        {
+            // Act
+            bool result = type.IsPrimitiveOrString();
+
+            // Assert
+            result.Should().BeFalse();
+        }
+    }
+
+    private class PlainEnumerable : IEnumerable
+    {
+        public IEnumerator GetEnumerator() => throw new NotSupportedException();
+    }
+
+    private class EnumerableOfIntAndString : IEnumerable<int>, IEnumerable<string>
+    {
+        IEnumerator<int> IEnumerable<int>.GetEnumerator() => throw new NotSupportedException();
+
+        IEnumerator<string> IEnumerable<string>.GetEnumerator() => throw new NotSupportedException();
+
+        IEnumerator IEnumerable.GetEnumerator() => throw new NotSupportedException();
+    }
+
+    private class CustomAwaitable
+    {
+        public CustomAwaiter GetAwaiter() => new();
+    }
+
+    private class CustomAwaiter : INotifyCompletion
+    {
+        public bool IsCompleted => true;
+
+        public void GetResult()
+        {
+        }
+
+        public void OnCompleted(Action continuation) => continuation();
     }
 
     private class OpenGenericClass<T>
