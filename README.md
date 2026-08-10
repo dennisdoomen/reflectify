@@ -78,13 +78,17 @@ To get more metadata from a `PropertyInfo`, you can use extensions methods like:
 * `IsIndexer`
 * `HasAttribute` and `HasAttributeInHierarchy`
 * `IsPublic`, `IsInternal` or `IsAbstract` to check either the getter or setters matches the criteria
+* `GetNullability` and `IsNullableReference` to determine the nullable reference type annotation of the property
 
 Similarly, you can find indexers using `FindIndexers`, conversion operators through `FindImplicitConversionOperators`
 and `FindExplicitConversionOperators`, and methods via `FindMethod`, `FindParameterlessMethod` and `HasMethod`.
 
+For a `FieldInfo`, you can use `GetNullability` and `IsNullableReference` in the same way as for `PropertyInfo`.
+
 For `ParameterInfo`, you can use:
 
 * `HasAttribute` and `HasAttributeInHierarchy` to check whether a parameter is decorated with a specific attribute, with an optional predicate to filter on attribute properties.
+* `GetNullability` and `IsNullableReference` to determine the nullable reference type annotation of the parameter.
 
 Other extension methods act on `Type` directly and include:
 
@@ -101,6 +105,12 @@ Other extension methods act on `Type` directly and include:
 Additionally, Reflectify offers some helpers such as
 
 * `NullableOrActualType` to get the actual type of a nullable type or the type itself if it's not nullable.
+
+`GetNullability` returns a `Nullability` enum (`Unknown`, `NotNull` or `Nullable`) that reflects the compiler-emitted
+nullable reference type metadata for reference types, and treats value types consistently with `NullableOrActualType`
+(e.g. `int` is `NotNull`, `int?` is `Nullable`). `IsNullableReference` is a convenience shortcut for
+`GetNullability() == Nullability.Nullable`. On .NET 6 and later this is backed by `NullabilityInfoContext`; on older
+targets it's determined by reading the compiler's `NullableAttribute`/`NullableContextAttribute` metadata directly.
 
 ## Download
 
