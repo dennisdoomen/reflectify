@@ -14,7 +14,12 @@ namespace Reflectify;
 /// Defines the kinds of members you want to get when querying for the fields and properties of a type.
 /// </summary>
 [Flags]
+#if REFLECTIFY_COMPILE
+public enum MemberKind
+#else
+[global::Microsoft.CodeAnalysis.Embedded]
 internal enum MemberKind
+#endif
 {
     None,
     Public = 1,
@@ -24,7 +29,13 @@ internal enum MemberKind
     Static = 16
 }
 
+#if REFLECTIFY_COMPILE
+public static class MemberKindExtensions
+#else
+[global::Microsoft.CodeAnalysis.Embedded]
+[global::System.Diagnostics.DebuggerNonUserCode]
 internal static class MemberKindExtensions
+#endif
 {
     public static BindingFlags ToBindingFlags(this MemberKind kind)
     {

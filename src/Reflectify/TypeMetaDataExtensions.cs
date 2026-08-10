@@ -14,7 +14,13 @@ using System.Text;
 
 namespace Reflectify;
 
+#if REFLECTIFY_COMPILE
+public static class TypeMetaDataExtensions
+#else
+[global::Microsoft.CodeAnalysis.Embedded]
+[global::System.Diagnostics.DebuggerNonUserCode]
 internal static class TypeMetaDataExtensions
+#endif
 {
     /// <summary>
     /// Returns the name of the type without the generic backtick and the type arguments.
