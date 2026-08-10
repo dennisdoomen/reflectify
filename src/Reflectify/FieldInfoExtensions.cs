@@ -19,6 +19,20 @@ internal static class FieldInfoExtensions
 #endif
 {
     /// <summary>
+    /// Returns <see langword="true" /> if the field is marked with the C# 11 <see langword="required" />
+    /// modifier, or <see langword="false" /> otherwise.
+    /// </summary>
+    /// <remarks>
+    /// The C# compiler emits a <c>System.Runtime.CompilerServices.RequiredMemberAttribute</c> on the member itself
+    /// as well as on its declaring type. This method only inspects the attribute on the field itself; it does not
+    /// check whether the declaring type as a whole is marked as having required members.
+    /// </remarks>
+    public static bool IsRequired(this FieldInfo field)
+    {
+        return MemberInfoExtensions.IsRequired((MemberInfo)field);
+    }
+
+    /// <summary>
     /// Determines the nullability of the field, taking into account nullable reference type metadata as well as
     /// nullable value types (see <see cref="TypeExtensions.NullableOrActualType"/>).
     /// </summary>

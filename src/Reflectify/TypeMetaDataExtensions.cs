@@ -12,6 +12,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace Reflectify;
@@ -332,6 +333,38 @@ internal static class TypeMetaDataExtensions
 #else
         return false;
 #endif
+    }
+
+    /// <summary>
+    /// Returns <see langword="true" /> if the type is a readonly struct, or <see langword="false" /> otherwise.
+    /// </summary>
+    public static bool IsReadOnlyStruct(this Type type)
+    {
+        // On older target frameworks IsReadOnlyAttribute may not be part of the BCL and could instead come from a
+        // PolySharp-polyfilled assembly, so match by full name instead of comparing Type instances (which would
+        // fail across assemblies).
+        return type.IsStruct() &&
+               type.CustomAttributes.Any(attribute =>
+                   attribute.AttributeType.FullName == "System.Runtime.CompilerServices.IsReadOnlyAttribute");
+    }
+
+    private static readonly Regex FileLocalTypeNamePattern = new(@"^<[^>]*>F[0-9A-Fa-f]{64}__", RegexOptions.Compiled,
+        TimeSpan.FromSeconds(1));
+
+    /// <summary>
+    /// Returns <see langword="true" /> if the type is a C# 11 <see langword="file" />-local type, or
+    /// <see langword="false" /> otherwise.
+    /// </summary>
+    /// <remarks>
+    /// Just like <see cref="IsRecordStruct"/>, recognizing file-local types from metadata is not officially
+    /// specified, so this check is based on heuristic testing of the current Roslyn compiler behavior. The
+    /// compiler mangles the metadata name of a file-local type into the form
+    /// <c>&lt;{FileIdentifier}&gt;F{64-character SHA-256 hash}__{OriginalTypeName}</c>, so this method matches
+    /// that pattern.
+    /// </remarks>
+    public static bool IsFileLocal(this Type type)
+    {
+        return FileLocalTypeNamePattern.IsMatch(type.Name);
     }
 
     /// <summary>

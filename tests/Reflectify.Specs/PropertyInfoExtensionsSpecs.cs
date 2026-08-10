@@ -196,6 +196,116 @@ public class PropertyInfoExtensionsSpecs
         }
     }
 
+    public class IsInitOnly
+    {
+        [Fact]
+        public void An_init_only_property_is_init_only()
+        {
+            // Act
+            PropertyInfo property = typeof(ClassWithInitAndNormalProperties).GetProperty("InitOnlyProperty");
+
+            // Assert
+            property.IsInitOnly().Should().BeTrue();
+        }
+
+        [Fact]
+        public void A_normal_settable_property_is_not_init_only()
+        {
+            // Act
+            PropertyInfo property = typeof(ClassWithInitAndNormalProperties).GetProperty("SettableProperty");
+
+            // Assert
+            property.IsInitOnly().Should().BeFalse();
+        }
+
+        [Fact]
+        public void A_get_only_property_is_not_init_only()
+        {
+            // Act
+            PropertyInfo property = typeof(ClassWithInitAndNormalProperties).GetProperty("GetOnlyProperty");
+
+            // Assert
+            property.IsInitOnly().Should().BeFalse();
+        }
+    }
+
+    public class IsRequired
+    {
+        [Fact]
+        public void A_required_property_is_required()
+        {
+            // Act
+            PropertyInfo property = typeof(ClassWithRequiredProperty).GetProperty("RequiredProperty");
+
+            // Assert
+            property.IsRequired().Should().BeTrue();
+        }
+
+        [Fact]
+        public void A_normal_property_is_not_required()
+        {
+            // Act
+            PropertyInfo property = typeof(ClassWithRequiredProperty).GetProperty("NormalProperty");
+
+            // Assert
+            property.IsRequired().Should().BeFalse();
+        }
+
+        private class ClassWithRequiredProperty
+        {
+            [UsedImplicitly]
+            public required string RequiredProperty { get; set; }
+
+            [UsedImplicitly]
+            public string NormalProperty { get; set; }
+        }
+    }
+
+    public class IsWritable
+    {
+        [Fact]
+        public void A_settable_property_is_writable()
+        {
+            // Act
+            PropertyInfo property = typeof(ClassWithInitAndNormalProperties).GetProperty("SettableProperty");
+
+            // Assert
+            property.IsWritable().Should().BeTrue();
+        }
+
+        [Fact]
+        public void An_init_only_property_is_not_writable()
+        {
+            // Act
+            PropertyInfo property = typeof(ClassWithInitAndNormalProperties).GetProperty("InitOnlyProperty");
+
+            // Assert
+            property.IsWritable().Should().BeFalse();
+        }
+
+        [Fact]
+        public void A_get_only_property_is_not_writable()
+        {
+            // Act
+            PropertyInfo property = typeof(ClassWithInitAndNormalProperties).GetProperty("GetOnlyProperty");
+
+            // Assert
+            property.IsWritable().Should().BeFalse();
+        }
+    }
+
+    private class ClassWithInitAndNormalProperties
+    {
+        [UsedImplicitly]
+        public string InitOnlyProperty { get; init; }
+
+        [UsedImplicitly]
+        public string SettableProperty { get; set; }
+
+        [UsedImplicitly]
+        public string GetOnlyProperty { get; }
+    }
+
     public class GetNullability
     {
         [Fact]
