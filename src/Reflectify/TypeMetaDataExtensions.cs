@@ -335,6 +335,133 @@ internal static class TypeMetaDataExtensions
     }
 
     /// <summary>
+    /// Renders the type the way a C# developer would write it, e.g. <c>Dictionary&lt;string, List&lt;int&gt;&gt;</c>.
+    /// </summary>
+    /// <remarks>
+    /// Nullable value types are rendered with a trailing <c>?</c>, arrays respect their rank (e.g. <c>int[,]</c>),
+    /// nested types are rendered with a <c>.</c> instead of the CLR <c>+</c>, and open generic type definitions
+    /// (like <c>typeof(List&lt;&gt;)</c>) are rendered using the generic parameter's own name (e.g. <c>List&lt;T&gt;</c>).
+    /// Common CLR primitive types are mapped to their C# keyword aliases (e.g. <see cref="int" /> instead of
+    /// <c>Int32</c>). Types that do not have a friendly name (see <see cref="HasFriendlyName" />), such as
+    /// anonymous types and tuples, fall back to a structural rendering, e.g. <c>(int, string)</c> for tuples and
+    /// <c>{ Name, Age }</c> for anonymous types.
+    /// </remarks>
+    public static string GetFriendlyName(this Type type)
+    {
+        return BuildFriendlyName(type, useFullName: false);
+    }
+
+    /// <summary>
+    /// Renders the type the way a C# developer would write it, using the full namespace-qualified name, e.g.
+    /// <c>System.Collections.Generic.Dictionary&lt;string, System.Collections.Generic.List&lt;int&gt;&gt;</c>.
+    /// </summary>
+    /// <remarks>
+    /// Behaves like <see cref="GetFriendlyName" />, except that the outer type and any nested generic type
+    /// arguments are rendered with their full namespace. Common CLR primitive types are still mapped to their
+    /// C# keyword aliases, since those keywords do not have a namespace-qualified equivalent.
+    /// </remarks>
+    public static string GetFullFriendlyName(this Type type)
+    {
+        return BuildFriendlyName(type, useFullName: true);
+    }
+
+    private static string BuildFriendlyName(Type type, bool useFullName)
+    {
+        if (type.IsGenericParameter)
+        {
+            return type.Name;
+        }
+
+        if (type.IsArray)
+        {
+            int rank = type.GetArrayRank();
+            string commas = new(',', rank - 1);
+
+            return $"{BuildFriendlyName(type.GetElementType(), useFullName)}[{commas}]";
+        }
+
+        if (type.IsConstructedGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
+        {
+            return $"{BuildFriendlyName(type.GetGenericArguments()[0], useFullName)}?";
+        }
+
+        if (KeywordAliases.TryGetValue(type, out string alias))
+        {
+            return alias;
+        }
+
+        if (!type.HasFriendlyName())
+        {
+            return BuildStructuralName(type, useFullName);
+        }
+
+        if (type.IsGenericType)
+        {
+            string typeArguments = string.Join(", ", type.GetGenericArguments().Select(t => BuildFriendlyName(t, useFullName)));
+
+            return $"{BuildSimpleName(type, useFullName)}<{typeArguments}>";
+        }
+
+        return BuildSimpleName(type, useFullName);
+    }
+
+    private static string BuildSimpleName(Type type, bool useFullName)
+    {
+        if (useFullName)
+        {
+            string name = type.FullName ?? type.Name;
+            name = name.Replace('+', '.');
+
+            int index = name.IndexOf('`');
+            return index == -1 ? name : name.Substring(0, index);
+        }
+
+        var nameParts = new List<string>();
+
+        for (Type current = type; current is not null; current = current.DeclaringType)
+        {
+            nameParts.Insert(0, current.GetNonGenericName());
+        }
+
+        return string.Join(".", nameParts);
+    }
+
+    private static string BuildStructuralName(Type type, bool useFullName)
+    {
+        if (type.IsTuple())
+        {
+            IEnumerable<string> elementNames = type.GetGenericArguments().Select(t => BuildFriendlyName(t, useFullName));
+
+            return $"({string.Join(", ", elementNames)})";
+        }
+
+        IEnumerable<string> propertyNames = type.GetProperties(BindingFlags.Public | BindingFlags.Instance)
+            .Select(p => p.Name);
+
+        return $"{{ {string.Join(", ", propertyNames)} }}";
+    }
+
+    private static readonly Dictionary<Type, string> KeywordAliases = new()
+    {
+        [typeof(int)] = "int",
+        [typeof(string)] = "string",
+        [typeof(bool)] = "bool",
+        [typeof(double)] = "double",
+        [typeof(float)] = "float",
+        [typeof(decimal)] = "decimal",
+        [typeof(long)] = "long",
+        [typeof(short)] = "short",
+        [typeof(byte)] = "byte",
+        [typeof(sbyte)] = "sbyte",
+        [typeof(uint)] = "uint",
+        [typeof(ulong)] = "ulong",
+        [typeof(ushort)] = "ushort",
+        [typeof(char)] = "char",
+        [typeof(object)] = "object",
+        [typeof(void)] = "void",
+    };
+
+    /// <summary>
     /// Returns <see langword="true" /> if the type is a constructed <see cref="Nullable{T}"/> type,
     /// or <see langword="false" /> otherwise.
     /// </summary>

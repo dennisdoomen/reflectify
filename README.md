@@ -101,6 +101,8 @@ Other extension methods act on `Type` directly and include:
   tuples, etc.
 * `IsAnonymous`, `IsTuple`, `IsRecord`, `IsRecordClass`, `IsRecordStruct`, `IsKeyValuePair`, `IsDelegate`, `IsStruct`, `IsRefStruct` to find these types.
 * `GetNonGenericName` to get the name of a type without the generic backtick and number of parameters.
+* `GetFriendlyName` and `GetFullFriendlyName` to render a type the way a C# developer would write it, e.g.
+  `Dictionary<string, List<int>>` or `int?`, optionally including the full namespace.
 * `IsNullable` to check whether a type is a constructed `Nullable<T>`.
 * `IsEnumerable` and `GetElementTypeOfEnumerable` to check whether a type is an enumerable (excluding `string`) and, if so, get its element type.
 * `IsDictionary` and `TryGetDictionaryTypes` to check whether a type is a dictionary and, if so, get its key and value types.
