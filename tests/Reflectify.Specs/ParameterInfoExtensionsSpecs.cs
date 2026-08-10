@@ -1,6 +1,8 @@
 using System;
+using System.Collections.Generic;
 using System.Reflection;
 using FluentAssertions;
+using JetBrains.Annotations;
 using Xunit;
 
 namespace Reflectify.Specs;
@@ -96,6 +98,125 @@ public class ParameterInfoExtensionsSpecs
     private class ClassWithAttributedParameter
     {
         public void Method([CustomParameter("Specific reason")] string value)
+        {
+        }
+    }
+
+    public class GetNullability
+    {
+        [Fact]
+        public void A_non_nullable_reference_parameter_is_not_null()
+        {
+            // Arrange
+            ParameterInfo parameter = typeof(ClassWithNullableParameters).GetMethod("Method")!.GetParameters()[0];
+
+            // Act / Assert
+            parameter.GetNullability().Should().Be(Nullability.NotNull);
+        }
+
+        [Fact]
+        public void A_nullable_reference_parameter_is_nullable()
+        {
+            // Arrange
+            ParameterInfo parameter = typeof(ClassWithNullableParameters).GetMethod("Method")!.GetParameters()[1];
+
+            // Act / Assert
+            parameter.GetNullability().Should().Be(Nullability.Nullable);
+        }
+
+        [Fact]
+        public void A_value_type_parameter_is_not_null()
+        {
+            // Arrange
+            ParameterInfo parameter = typeof(ClassWithNullableParameters).GetMethod("Method")!.GetParameters()[2];
+
+            // Act / Assert
+            parameter.GetNullability().Should().Be(Nullability.NotNull);
+        }
+
+        [Fact]
+        public void A_nullable_value_type_parameter_is_nullable()
+        {
+            // Arrange
+            ParameterInfo parameter = typeof(ClassWithNullableParameters).GetMethod("OtherMethod")!.GetParameters()[0];
+
+            // Act / Assert
+            parameter.GetNullability().Should().Be(Nullability.Nullable);
+        }
+
+        [Fact]
+        public void A_non_nullable_generic_parameter_is_not_null()
+        {
+            // Arrange
+            ParameterInfo parameter = typeof(ClassWithNullableParameters).GetMethod("OtherMethod")!.GetParameters()[1];
+
+            // Act / Assert
+            parameter.GetNullability().Should().Be(Nullability.NotNull);
+        }
+
+        [Fact]
+        public void A_nullable_generic_parameter_is_nullable()
+        {
+            // Arrange
+            ParameterInfo parameter = typeof(ClassWithNullableParameters).GetMethod("OtherMethod")!.GetParameters()[2];
+
+            // Act / Assert
+            parameter.GetNullability().Should().Be(Nullability.Nullable);
+        }
+
+        [Fact]
+        public void A_parameter_compiled_without_a_nullable_context_is_unknown()
+        {
+            // Arrange
+            ParameterInfo parameter = typeof(ClassWithoutNullableContext).GetMethod("Method")!.GetParameters()[0];
+
+            // Act / Assert
+            parameter.GetNullability().Should().Be(Nullability.Unknown);
+        }
+    }
+
+    public class IsNullableReference
+    {
+        [Fact]
+        public void A_nullable_reference_parameter_is_a_nullable_reference()
+        {
+            // Arrange
+            ParameterInfo parameter = typeof(ClassWithNullableParameters).GetMethod("Method")!.GetParameters()[1];
+
+            // Act / Assert
+            parameter.IsNullableReference().Should().BeTrue();
+        }
+
+        [Fact]
+        public void A_non_nullable_reference_parameter_is_not_a_nullable_reference()
+        {
+            // Arrange
+            ParameterInfo parameter = typeof(ClassWithNullableParameters).GetMethod("Method")!.GetParameters()[0];
+
+            // Act / Assert
+            parameter.IsNullableReference().Should().BeFalse();
+        }
+    }
+
+#nullable enable
+    private class ClassWithNullableParameters
+    {
+        [UsedImplicitly]
+        public void Method(string nonNullableString, string? nullableString, int nonNullableInt)
+        {
+        }
+
+        [UsedImplicitly]
+        public void OtherMethod(int? nullableInt, List<string> nonNullableList, List<string>? nullableList)
+        {
+        }
+    }
+#nullable disable
+
+    private class ClassWithoutNullableContext
+    {
+        [UsedImplicitly]
+        public void Method(string someString)
         {
         }
     }
