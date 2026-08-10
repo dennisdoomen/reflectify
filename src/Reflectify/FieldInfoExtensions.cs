@@ -5,6 +5,7 @@
 
 #nullable disable
 
+using System;
 using System.Reflection;
 
 namespace Reflectify;
@@ -29,5 +30,48 @@ internal static class FieldInfoExtensions
     public static bool IsRequired(this FieldInfo field)
     {
         return MemberInfoExtensions.IsRequired((MemberInfo)field);
+    }
+
+    /// <summary>
+    /// Determines the nullability of the field, taking into account nullable reference type metadata as well as
+    /// nullable value types (see <see cref="TypeExtensions.NullableOrActualType"/>).
+    /// </summary>
+    public static Nullability GetNullability(this FieldInfo field)
+    {
+        Type fieldType = field.FieldType;
+
+        Type actualType = fieldType.NullableOrActualType();
+
+        if (actualType != fieldType)
+        {
+            return Nullability.Nullable;
+        }
+
+        if (fieldType.IsValueType)
+        {
+            return Nullability.NotNull;
+        }
+
+#if NET6_0_OR_GREATER
+        NullabilityInfo info = new NullabilityInfoContext().Create(field);
+
+        return info.ReadState switch
+        {
+            NullabilityState.NotNull => Nullability.NotNull,
+            NullabilityState.Nullable => Nullability.Nullable,
+            _ => Nullability.Unknown
+        };
+#else
+        return NullabilityMetadataReader.GetNullability(fieldType, field.GetCustomAttributes(inherit: false), field.DeclaringType);
+#endif
+    }
+
+    /// <summary>
+    /// Returns <see langword="true" /> if the field is annotated as accepting <see langword="null"/>, either
+    /// because it is a nullable reference type or a nullable value type, or <see langword="false" /> otherwise.
+    /// </summary>
+    public static bool IsNullableReference(this FieldInfo field)
+    {
+        return field.GetNullability() == Nullability.Nullable;
     }
 }

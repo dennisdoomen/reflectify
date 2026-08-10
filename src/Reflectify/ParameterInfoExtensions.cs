@@ -53,4 +53,48 @@ internal static class ParameterInfoExtensions
     {
         return parameter.IsDefined(typeof(TAttribute), inherit: true);
     }
+
+    /// <summary>
+    /// Determines the nullability of the parameter, taking into account nullable reference type metadata as well as
+    /// nullable value types (see <see cref="TypeExtensions.NullableOrActualType"/>).
+    /// </summary>
+    public static Nullability GetNullability(this ParameterInfo parameter)
+    {
+        Type parameterType = parameter.ParameterType;
+
+        Type actualType = parameterType.NullableOrActualType();
+
+        if (actualType != parameterType)
+        {
+            return Nullability.Nullable;
+        }
+
+        if (parameterType.IsValueType)
+        {
+            return Nullability.NotNull;
+        }
+
+#if NET6_0_OR_GREATER
+        NullabilityInfo info = new NullabilityInfoContext().Create(parameter);
+
+        return info.ReadState switch
+        {
+            NullabilityState.NotNull => Nullability.NotNull,
+            NullabilityState.Nullable => Nullability.Nullable,
+            _ => Nullability.Unknown
+        };
+#else
+        return NullabilityMetadataReader.GetNullability(parameterType, parameter.GetCustomAttributes(inherit: false),
+            parameter.Member.DeclaringType);
+#endif
+    }
+
+    /// <summary>
+    /// Returns <see langword="true" /> if the parameter is annotated as accepting <see langword="null"/>, either
+    /// because it is a nullable reference type or a nullable value type, or <see langword="false" /> otherwise.
+    /// </summary>
+    public static bool IsNullableReference(this ParameterInfo parameter)
+    {
+        return parameter.GetNullability() == Nullability.Nullable;
+    }
 }

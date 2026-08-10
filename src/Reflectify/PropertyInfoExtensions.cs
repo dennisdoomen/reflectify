@@ -5,6 +5,7 @@
 
 #nullable disable
 
+using System;
 using System.Linq;
 using System.Reflection;
 
@@ -111,5 +112,49 @@ internal static class PropertyInfoExtensions
     public static bool IsWritable(this PropertyInfo prop)
     {
         return prop.SetMethod is not null && !prop.IsInitOnly();
+    }
+
+    /// <summary>
+    /// Determines the nullability of the property, taking into account nullable reference type metadata as well as
+    /// nullable value types (see <see cref="TypeExtensions.NullableOrActualType"/>).
+    /// </summary>
+    public static Nullability GetNullability(this PropertyInfo prop)
+    {
+        Type propertyType = prop.PropertyType;
+
+        Type actualType = propertyType.NullableOrActualType();
+
+        if (actualType != propertyType)
+        {
+            return Nullability.Nullable;
+        }
+
+        if (propertyType.IsValueType)
+        {
+            return Nullability.NotNull;
+        }
+
+#if NET6_0_OR_GREATER
+        NullabilityInfo info = new NullabilityInfoContext().Create(prop);
+        NullabilityState state = prop.GetMethod is not null ? info.ReadState : info.WriteState;
+
+        return state switch
+        {
+            NullabilityState.NotNull => Nullability.NotNull,
+            NullabilityState.Nullable => Nullability.Nullable,
+            _ => Nullability.Unknown
+        };
+#else
+        return NullabilityMetadataReader.GetNullability(propertyType, prop.GetCustomAttributes(inherit: false), prop.DeclaringType);
+#endif
+    }
+
+    /// <summary>
+    /// Returns <see langword="true" /> if the property is annotated as accepting <see langword="null"/>, either
+    /// because it is a nullable reference type or a nullable value type, or <see langword="false" /> otherwise.
+    /// </summary>
+    public static bool IsNullableReference(this PropertyInfo prop)
+    {
+        return prop.GetNullability() == Nullability.Nullable;
     }
 }

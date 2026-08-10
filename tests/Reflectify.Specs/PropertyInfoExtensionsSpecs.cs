@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Globalization;
 using System.Reflection;
 using FluentAssertions;
@@ -305,6 +306,102 @@ public class PropertyInfoExtensionsSpecs
         public string GetOnlyProperty { get; }
     }
 
+    public class GetNullability
+    {
+        [Fact]
+        public void A_non_nullable_reference_property_is_not_null()
+        {
+            // Act
+            PropertyInfo property = typeof(ClassWithNullableProperties).GetProperty("NonNullableString");
+
+            // Assert
+            property.GetNullability().Should().Be(Nullability.NotNull);
+        }
+
+        [Fact]
+        public void A_nullable_reference_property_is_nullable()
+        {
+            // Act
+            PropertyInfo property = typeof(ClassWithNullableProperties).GetProperty("NullableString");
+
+            // Assert
+            property.GetNullability().Should().Be(Nullability.Nullable);
+        }
+
+        [Fact]
+        public void A_value_type_property_is_not_null()
+        {
+            // Act
+            PropertyInfo property = typeof(ClassWithNullableProperties).GetProperty("NonNullableInt");
+
+            // Assert
+            property.GetNullability().Should().Be(Nullability.NotNull);
+        }
+
+        [Fact]
+        public void A_nullable_value_type_property_is_nullable()
+        {
+            // Act
+            PropertyInfo property = typeof(ClassWithNullableProperties).GetProperty("NullableInt");
+
+            // Assert
+            property.GetNullability().Should().Be(Nullability.Nullable);
+        }
+
+        [Fact]
+        public void A_non_nullable_generic_property_is_not_null()
+        {
+            // Act
+            PropertyInfo property = typeof(ClassWithNullableProperties).GetProperty("NonNullableList");
+
+            // Assert
+            property.GetNullability().Should().Be(Nullability.NotNull);
+        }
+
+        [Fact]
+        public void A_nullable_generic_property_is_nullable()
+        {
+            // Act
+            PropertyInfo property = typeof(ClassWithNullableProperties).GetProperty("NullableList");
+
+            // Assert
+            property.GetNullability().Should().Be(Nullability.Nullable);
+        }
+
+        [Fact]
+        public void A_property_compiled_without_a_nullable_context_is_unknown()
+        {
+            // Act
+            PropertyInfo property = typeof(ClassWithoutNullableContext).GetProperty("SomeString");
+
+            // Assert
+            property.GetNullability().Should().Be(Nullability.Unknown);
+        }
+    }
+
+    public class IsNullableReference
+    {
+        [Fact]
+        public void A_nullable_reference_property_is_a_nullable_reference()
+        {
+            // Act
+            PropertyInfo property = typeof(ClassWithNullableProperties).GetProperty("NullableString");
+
+            // Assert
+            property.IsNullableReference().Should().BeTrue();
+        }
+
+        [Fact]
+        public void A_non_nullable_reference_property_is_not_a_nullable_reference()
+        {
+            // Act
+            PropertyInfo property = typeof(ClassWithNullableProperties).GetProperty("NonNullableString");
+
+            // Assert
+            property.IsNullableReference().Should().BeFalse();
+        }
+    }
+
     private class ClassWithVariousProperties
     {
         [UsedImplicitly]
@@ -318,5 +415,34 @@ public class PropertyInfoExtensionsSpecs
 
         [UsedImplicitly]
         protected internal string ProtectedInternalProperty { get; set; }
+    }
+
+#nullable enable
+    private class ClassWithNullableProperties
+    {
+        [UsedImplicitly]
+        public string NonNullableString { get; set; } = "";
+
+        [UsedImplicitly]
+        public string? NullableString { get; set; }
+
+        [UsedImplicitly]
+        public int NonNullableInt { get; set; }
+
+        [UsedImplicitly]
+        public int? NullableInt { get; set; }
+
+        [UsedImplicitly]
+        public List<string> NonNullableList { get; set; } = new();
+
+        [UsedImplicitly]
+        public List<string>? NullableList { get; set; }
+    }
+#nullable disable
+
+    private class ClassWithoutNullableContext
+    {
+        [UsedImplicitly]
+        public string SomeString { get; set; }
     }
 }
