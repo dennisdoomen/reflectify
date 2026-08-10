@@ -6,11 +6,13 @@
 #nullable disable
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
+using System.Threading.Tasks;
 
 namespace Reflectify;
 
@@ -458,4 +460,248 @@ internal static class TypeMetaDataExtensions
         [typeof(object)] = "object",
         [typeof(void)] = "void",
     };
+
+    /// <summary>
+    /// Returns <see langword="true" /> if the type is a constructed <see cref="Nullable{T}"/> type,
+    /// or <see langword="false" /> otherwise.
+    /// </summary>
+    /// <remarks>
+    /// This uses the same check as <c>NullableOrActualType</c> (<c>type.IsGenericType &amp;&amp; type.GetGenericTypeDefinition() == typeof(Nullable&lt;&gt;)</c>),
+    /// so <c>type.IsNullable()</c> is <see langword="true" /> exactly when <c>type.NullableOrActualType()</c> returns a
+    /// different type than <paramref name="type"/> itself.
+    /// </remarks>
+    public static bool IsNullable(this Type type)
+    {
+        return type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>);
+    }
+
+    /// <summary>
+    /// Returns <see langword="true" /> if the type implements <see cref="IEnumerable"/> (including <see cref="IEnumerable{T}"/>),
+    /// or <see langword="false" /> otherwise.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="string"/> is explicitly excluded, even though it implements <see cref="IEnumerable{T}"/> of <see cref="char"/>.
+    /// Treating strings as enumerables is rarely what a caller wants, so this method always returns <see langword="false" />
+    /// for <see cref="string"/>.
+    /// </remarks>
+    /// <remarks>
+    /// This method only recognizes the standard <see cref="IEnumerable"/>/<see cref="IEnumerable{T}"/> interfaces.
+    /// It does not support the C# 9 pattern-based (duck-typed) <c>foreach</c>, i.e. a type that merely exposes a
+    /// public <c>GetEnumerator()</c> method without implementing <see cref="IEnumerable"/>. Recognizing the
+    /// well-known interfaces covers the vast majority of real-world use cases.
+    /// </remarks>
+    public static bool IsEnumerable(this Type type)
+    {
+        return type != typeof(string) && typeof(IEnumerable).IsAssignableFrom(type);
+    }
+
+    /// <summary>
+    /// Returns the element type of an enumerable <paramref name="type"/>, or <see langword="null" /> if the type
+    /// is not enumerable.
+    /// </summary>
+    /// <remarks>
+    /// For arrays, this returns the array's element type. For types that implement <see cref="IEnumerable{T}"/>
+    /// exactly once (directly or through an inherited interface), this returns that single <c>T</c>. When a type
+    /// implements <see cref="IEnumerable{T}"/> for multiple different element types (e.g. a type that implements
+    /// both <c>IEnumerable&lt;int&gt;</c> and <c>IEnumerable&lt;string&gt;</c>), or when the type only implements the
+    /// non-generic <see cref="IEnumerable"/>, the element type cannot be uniquely determined. In that case, this
+    /// method falls back to returning <see cref="object"/> as a safe default.
+    /// </remarks>
+    public static Type GetElementTypeOfEnumerable(this Type type)
+    {
+        if (!type.IsEnumerable())
+        {
+            return null;
+        }
+
+        if (type.IsArray)
+        {
+            return type.GetElementType();
+        }
+
+        Type[] elementTypes = type.GetClosedGenericInterfacesIncludingSelf(typeof(IEnumerable<>))
+            .Select(i => i.GetGenericArguments()[0])
+            .Distinct()
+            .ToArray();
+
+        return elementTypes.Length == 1 ? elementTypes[0] : typeof(object);
+    }
+
+    /// <summary>
+    /// Returns <see langword="true" /> if the type implements <see cref="IDictionary"/> or a closed
+    /// <see cref="IDictionary{TKey,TValue}"/> or <see cref="IReadOnlyDictionary{TKey,TValue}"/>, or <see langword="false" /> otherwise.
+    /// </summary>
+    public static bool IsDictionary(this Type type)
+    {
+        return typeof(IDictionary).IsAssignableFrom(type)
+               || type.GetClosedGenericInterfacesIncludingSelf(typeof(IDictionary<,>)).Length > 0
+               || type.GetClosedGenericInterfacesIncludingSelf(typeof(IReadOnlyDictionary<,>)).Length > 0;
+    }
+
+    /// <summary>
+    /// Attempts to get the key and value types of a dictionary <paramref name="type"/>.
+    /// </summary>
+    /// <returns>
+    /// <see langword="true" /> and the key and value types if <paramref name="type"/> implements a closed
+    /// <see cref="IDictionary{TKey,TValue}"/> or <see cref="IReadOnlyDictionary{TKey,TValue}"/>; otherwise,
+    /// <see langword="false" /> with both out parameters set to <see langword="null" />.
+    /// </returns>
+    /// <remarks>
+    /// Types that only implement the non-generic <see cref="IDictionary"/> (and hence do return
+    /// <see langword="true" /> from <see cref="IsDictionary"/>) do not carry key/value type information and will
+    /// therefore make this method return <see langword="false" />.
+    /// </remarks>
+    public static bool TryGetDictionaryTypes(this Type type, out Type keyType, out Type valueType)
+    {
+        Type match = type.GetClosedGenericInterfacesIncludingSelf(typeof(IDictionary<,>)).FirstOrDefault()
+                      ?? type.GetClosedGenericInterfacesIncludingSelf(typeof(IReadOnlyDictionary<,>)).FirstOrDefault();
+
+        if (match is not null)
+        {
+            Type[] genericArguments = match.GetGenericArguments();
+            keyType = genericArguments[0];
+            valueType = genericArguments[1];
+            return true;
+        }
+
+        keyType = null;
+        valueType = null;
+        return false;
+    }
+
+    /// <summary>
+    /// Returns <see langword="true" /> if the type can be awaited using the C# <c>await</c> keyword, or
+    /// <see langword="false" /> otherwise.
+    /// </summary>
+    /// <remarks>
+    /// This is a reflection-based duck-typing check that mirrors what the C# compiler itself requires of an
+    /// awaitable type: a public, parameterless, instance <c>GetAwaiter()</c> method whose return type (the
+    /// "awaiter") has a public <c>IsCompleted</c> property, a public parameterless <c>GetResult()</c> method, and
+    /// implements <see cref="INotifyCompletion"/>. The awaiter type itself does not need to come from a specific
+    /// namespace or assembly; any type that satisfies this shape is recognized.
+    /// </remarks>
+    public static bool IsAwaitable(this Type type)
+    {
+        MethodInfo getAwaiter = type.GetMethod("GetAwaiter", BindingFlags.Public | BindingFlags.Instance, null,
+            Type.EmptyTypes, null);
+
+        if (getAwaiter is null)
+        {
+            return false;
+        }
+
+        Type awaiterType = getAwaiter.ReturnType;
+
+        bool hasIsCompleted = awaiterType.GetProperty("IsCompleted", BindingFlags.Public | BindingFlags.Instance)
+            ?.GetMethod?.IsPublic == true;
+
+        bool hasGetResult = awaiterType.GetMethod("GetResult", BindingFlags.Public | BindingFlags.Instance, null,
+            Type.EmptyTypes, null) is not null;
+
+        bool implementsNotifyCompletion = typeof(INotifyCompletion).IsAssignableFrom(awaiterType);
+
+        return hasIsCompleted && hasGetResult && implementsNotifyCompletion;
+    }
+
+    /// <summary>
+    /// Returns <see langword="true" /> if the type is <see cref="Task"/>, a constructed <see cref="Task{TResult}"/>,
+    /// <c>ValueTask</c>, or a constructed <c>ValueTask&lt;TResult&gt;</c>, or <see langword="false" /> otherwise.
+    /// </summary>
+    /// <remarks>
+    /// Unlike <see cref="IsAwaitable"/>, this is a narrower check for these specific, concrete BCL types rather than
+    /// a general awaitable duck-type check. <c>ValueTask</c> and <c>ValueTask&lt;TResult&gt;</c> are not part
+    /// of the reference assemblies of every target framework this library supports (on net47 and netstandard2.0 they
+    /// are only available through the <c>System.Threading.Tasks.Extensions</c> package), so they are recognized by
+    /// their full name rather than through a direct <c>typeof</c> reference, keeping this method available - and
+    /// correct - on every supported target framework regardless of which packages the consumer has installed.
+    /// </remarks>
+    public static bool IsTaskLike(this Type type)
+    {
+        if (type == typeof(Task) || (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Task<>)))
+        {
+            return true;
+        }
+
+        if (type.FullName == "System.Threading.Tasks.ValueTask")
+        {
+            return true;
+        }
+
+        if (type.IsGenericType && type.GetGenericTypeDefinition().FullName == "System.Threading.Tasks.ValueTask`1")
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>
+    /// Returns <see langword="true" /> if the type is one of the numeric primitive types (<see cref="byte"/>,
+    /// <see cref="sbyte"/>, <see cref="short"/>, <see cref="ushort"/>, <see cref="int"/>, <see cref="uint"/>,
+    /// <see cref="long"/>, <see cref="ulong"/>, <see cref="float"/>, <see cref="double"/>, or <see cref="decimal"/>),
+    /// or <see langword="false" /> otherwise.
+    /// </summary>
+    /// <remarks>
+    /// <see cref="decimal"/> is included explicitly because, unlike the other numeric types, it is not considered
+    /// a CLR primitive (<c>typeof(decimal).IsPrimitive</c> is <see langword="false" />).
+    /// </remarks>
+    /// <remarks>
+    /// <see cref="Nullable{T}"/> forms of these types (e.g. <c>int?</c>) are considered <b>not</b> numeric by this
+    /// method; the check applies to the type itself only. Callers that want nullable-aware numeric checks should
+    /// first unwrap the type, for instance using <c>NullableOrActualType</c>.
+    /// </remarks>
+    public static bool IsNumeric(this Type type)
+    {
+        return type == typeof(byte)
+               || type == typeof(sbyte)
+               || type == typeof(short)
+               || type == typeof(ushort)
+               || type == typeof(int)
+               || type == typeof(uint)
+               || type == typeof(long)
+               || type == typeof(ulong)
+               || type == typeof(float)
+               || type == typeof(double)
+               || type == typeof(decimal);
+    }
+
+    /// <summary>
+    /// Returns <see langword="true" /> if the type is a CLR primitive type or <see cref="string"/>, or
+    /// <see langword="false" /> otherwise.
+    /// </summary>
+    /// <remarks>
+    /// This follows the underlying <see cref="Type.IsPrimitive"/> CLR semantics as-is, which has a couple of
+    /// notable quirks: <see cref="decimal"/> is <b>not</b> considered primitive (see <see cref="IsNumeric"/> if you
+    /// need to include it), while <see cref="IntPtr"/> and <see cref="UIntPtr"/> <b>are</b> considered primitive on
+    /// some but not all frameworks/runtimes. This method intentionally does not attempt to normalize that
+    /// framework-dependent behavior and simply defers to <see cref="Type.IsPrimitive"/>.
+    /// </remarks>
+    public static bool IsPrimitiveOrString(this Type type)
+    {
+        return type.IsPrimitive || type == typeof(string);
+    }
+
+    /// <summary>
+    /// Returns the closed generic interfaces implemented by <paramref name="type"/> that close over
+    /// <paramref name="openGenericType"/>, adapting <see cref="GetClosedGenericInterfaces"/> to also cover the case
+    /// where <paramref name="type"/> itself, or one of the interfaces it directly implements, is already a closed
+    /// version of <paramref name="openGenericType"/> (a case <see cref="GetClosedGenericInterfaces"/> does not
+    /// cover on its own, since it only looks for the open generic type among the interfaces of the interfaces
+    /// implemented by <paramref name="type"/>).
+    /// </summary>
+    private static Type[] GetClosedGenericInterfacesIncludingSelf(this Type type, Type openGenericType)
+    {
+        IEnumerable<Type> self = type.IsGenericType && type.GetGenericTypeDefinition() == openGenericType
+            ? [type]
+            : Type.EmptyTypes;
+
+        IEnumerable<Type> directInterfaces = type.GetInterfaces()
+            .Where(i => i.IsGenericType && i.GetGenericTypeDefinition() == openGenericType);
+
+        return self
+            .Concat(directInterfaces)
+            .Concat(type.GetClosedGenericInterfaces(openGenericType))
+            .Distinct()
+            .ToArray();
+    }
 }
