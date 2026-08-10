@@ -1109,6 +1109,257 @@ public class TypeMetaDataExtensionsSpecs
         }
     }
 
+    public class GetFriendlyName
+    {
+        [Theory]
+        [InlineData(typeof(int), "int")]
+        [InlineData(typeof(string), "string")]
+        [InlineData(typeof(bool), "bool")]
+        [InlineData(typeof(double), "double")]
+        [InlineData(typeof(float), "float")]
+        [InlineData(typeof(decimal), "decimal")]
+        [InlineData(typeof(long), "long")]
+        [InlineData(typeof(short), "short")]
+        [InlineData(typeof(byte), "byte")]
+        [InlineData(typeof(sbyte), "sbyte")]
+        [InlineData(typeof(uint), "uint")]
+        [InlineData(typeof(ulong), "ulong")]
+        [InlineData(typeof(ushort), "ushort")]
+        [InlineData(typeof(char), "char")]
+        [InlineData(typeof(object), "object")]
+        [InlineData(typeof(void), "void")]
+        public void Maps_primitive_types_to_their_csharp_keyword_alias(Type type, string expectedName)
+        {
+            // Act
+            string result = type.GetFriendlyName();
+
+            // Assert
+            result.Should().Be(expectedName);
+        }
+
+        [Fact]
+        public void Renders_a_simple_class_by_its_name()
+        {
+            // Act
+            string result = typeof(SomeOtherClass).GetFriendlyName();
+
+            // Assert
+            result.Should().Be("TypeMetaDataExtensionsSpecs.SomeOtherClass");
+        }
+
+        [Fact]
+        public void Renders_a_nullable_value_type_with_a_question_mark()
+        {
+            // Act
+            string result = typeof(int?).GetFriendlyName();
+
+            // Assert
+            result.Should().Be("int?");
+        }
+
+        [Fact]
+        public void Renders_a_single_dimensional_array_with_square_brackets()
+        {
+            // Act
+            string result = typeof(int[]).GetFriendlyName();
+
+            // Assert
+            result.Should().Be("int[]");
+        }
+
+        [Fact]
+        public void Renders_a_multi_dimensional_array_respecting_its_rank()
+        {
+            // Act
+            string result = typeof(int[,]).GetFriendlyName();
+
+            // Assert
+            result.Should().Be("int[,]");
+        }
+
+        [Fact]
+        public void Renders_an_array_of_a_reference_type()
+        {
+            // Act
+            string result = typeof(SomeOtherClass[]).GetFriendlyName();
+
+            // Assert
+            result.Should().Be("TypeMetaDataExtensionsSpecs.SomeOtherClass[]");
+        }
+
+        [Fact]
+        public void Renders_a_nested_type_using_a_dot_instead_of_a_plus()
+        {
+            // Act
+            string result = typeof(OuterType.InnerType).GetFriendlyName();
+
+            // Assert
+            result.Should().Be("TypeMetaDataExtensionsSpecs.OuterType.InnerType");
+        }
+
+        [Fact]
+        public void Renders_a_generic_type_with_a_single_type_argument()
+        {
+            // Act
+            string result = typeof(List<int>).GetFriendlyName();
+
+            // Assert
+            result.Should().Be("List<int>");
+        }
+
+        [Fact]
+        public void Renders_a_generic_type_with_multiple_type_arguments()
+        {
+            // Act
+            string result = typeof(Dictionary<string, int>).GetFriendlyName();
+
+            // Assert
+            result.Should().Be("Dictionary<string, int>");
+        }
+
+        [Fact]
+        public void Renders_nested_generic_types_recursively()
+        {
+            // Act
+            string result = typeof(Dictionary<string, List<int>>).GetFriendlyName();
+
+            // Assert
+            result.Should().Be("Dictionary<string, List<int>>");
+        }
+
+        [Fact]
+        public void Renders_an_open_generic_type_definition_using_the_generic_parameter_name()
+        {
+            // Act
+            string result = typeof(List<>).GetFriendlyName();
+
+            // Assert
+            result.Should().Be("List<T>");
+        }
+
+        [Fact]
+        public void Renders_a_tuple_structurally_using_the_friendly_names_of_its_elements()
+        {
+            // Arrange
+            var subject = (SomeProperty: "SomeValue", SomeOtherProperty: 42);
+
+            // Act
+            string result = subject.GetType().GetFriendlyName();
+
+            // Assert
+            result.Should().Be("(string, int)");
+        }
+
+        [Fact]
+        public void Renders_an_anonymous_type_structurally_using_its_property_names()
+        {
+            // Arrange
+            var subject = new { Name = "SomeValue", Age = 42 };
+
+            // Act
+            string result = subject.GetType().GetFriendlyName();
+
+            // Assert
+            result.Should().Be("{ Name, Age }");
+        }
+    }
+
+    public class GetFullFriendlyName
+    {
+        [Fact]
+        public void Renders_a_simple_class_using_its_full_namespace()
+        {
+            // Act
+            string result = typeof(SomeOtherClass).GetFullFriendlyName();
+
+            // Assert
+            result.Should().Be("Reflectify.Specs.TypeMetaDataExtensionsSpecs+SomeOtherClass".Replace('+', '.'));
+        }
+
+        [Fact]
+        public void Renders_a_nested_type_using_the_full_namespace_and_dots()
+        {
+            // Act
+            string result = typeof(OuterType.InnerType).GetFullFriendlyName();
+
+            // Assert
+            result.Should().Be("Reflectify.Specs.TypeMetaDataExtensionsSpecs+OuterType+InnerType".Replace('+', '.'));
+        }
+
+        [Fact]
+        public void Renders_generic_type_arguments_with_their_full_namespace_too()
+        {
+            // Act
+            string result = typeof(Dictionary<string, List<int>>).GetFullFriendlyName();
+
+            // Assert
+            result.Should().Be("System.Collections.Generic.Dictionary<string, System.Collections.Generic.List<int>>");
+        }
+
+        [Fact]
+        public void Still_maps_primitive_types_to_their_csharp_keyword_alias()
+        {
+            // Act
+            string result = typeof(int).GetFullFriendlyName();
+
+            // Assert
+            result.Should().Be("int");
+        }
+
+        [Fact]
+        public void Renders_a_nullable_value_type_with_a_question_mark()
+        {
+            // Act
+            string result = typeof(int?).GetFullFriendlyName();
+
+            // Assert
+            result.Should().Be("int?");
+        }
+
+        [Fact]
+        public void Renders_an_array_respecting_its_rank()
+        {
+            // Act
+            string result = typeof(int[,]).GetFullFriendlyName();
+
+            // Assert
+            result.Should().Be("int[,]");
+        }
+
+        [Fact]
+        public void Renders_a_tuple_structurally_using_the_full_friendly_names_of_its_elements()
+        {
+            // Arrange
+            var subject = (SomeProperty: "SomeValue", SomeOtherProperty: 42);
+
+            // Act
+            string result = subject.GetType().GetFullFriendlyName();
+
+            // Assert
+            result.Should().Be("(string, int)");
+        }
+
+        [Fact]
+        public void Renders_an_anonymous_type_structurally_using_its_property_names()
+        {
+            // Arrange
+            var subject = new { Name = "SomeValue", Age = 42 };
+
+            // Act
+            string result = subject.GetType().GetFullFriendlyName();
+
+            // Assert
+            result.Should().Be("{ Name, Age }");
+        }
+    }
+
+    private class OuterType
+    {
+        public class InnerType
+        {
+        }
+    }
+
     public class IsNullable
     {
         [Fact]
