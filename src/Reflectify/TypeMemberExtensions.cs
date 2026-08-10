@@ -13,7 +13,13 @@ using System.Reflection;
 
 namespace Reflectify;
 
+#if REFLECTIFY_COMPILE
+public static class TypeMemberExtensions
+#else
+[global::Microsoft.CodeAnalysis.Embedded]
+[global::System.Diagnostics.DebuggerNonUserCode]
 internal static class TypeMemberExtensions
+#endif
 {
     private static readonly ConcurrentDictionary<(Type Type, MemberKind Kind), Reflector> ReflectorCache = new();
 

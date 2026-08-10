@@ -15,7 +15,13 @@ namespace Reflectify;
 /// <summary>
 /// Helper class to get all the public and internal fields and properties from a type.
 /// </summary>
+#if REFLECTIFY_COMPILE
+public sealed class Reflector(Type typeToReflect, MemberKind kind)
+#else
+[global::Microsoft.CodeAnalysis.Embedded]
+[global::System.Diagnostics.DebuggerNonUserCode]
 internal sealed class Reflector(Type typeToReflect, MemberKind kind)
+#endif
 {
     private readonly object lazyLoadingLock = new();
     private volatile PropertyInfo[] cachedProperties;
@@ -173,7 +179,7 @@ internal sealed class Reflector(Type typeToReflect, MemberKind kind)
                ((kind & MemberKind.Internal) != MemberKind.None && (field.IsAssembly || field.IsFamilyOrAssembly));
     }
 
-    private class OrderedPropertyCollection
+    private sealed class OrderedPropertyCollection
     {
         private readonly Dictionary<string, PropertyKind> kindMap = new();
         private readonly List<(string Name, PropertyInfo Property)> propertiesWithName = new();

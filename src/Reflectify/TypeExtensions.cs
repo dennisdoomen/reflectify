@@ -9,7 +9,13 @@ using System;
 
 namespace Reflectify;
 
+#if REFLECTIFY_COMPILE
+public static class TypeExtensions
+#else
+[global::Microsoft.CodeAnalysis.Embedded]
+[global::System.Diagnostics.DebuggerNonUserCode]
 internal static class TypeExtensions
+#endif
 {
     /// <summary>
     /// If the type provided is a nullable type, gets the underlying type. Returns the type itself otherwise.

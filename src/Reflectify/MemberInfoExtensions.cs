@@ -11,7 +11,13 @@ using System.Reflection;
 
 namespace Reflectify;
 
+#if REFLECTIFY_COMPILE
+public static class MemberInfoExtensions
+#else
+[global::Microsoft.CodeAnalysis.Embedded]
+[global::System.Diagnostics.DebuggerNonUserCode]
 internal static class MemberInfoExtensions
+#endif
 {
     public static bool HasAttribute<TAttribute>(this MemberInfo member)
         where TAttribute : Attribute

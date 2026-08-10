@@ -9,7 +9,13 @@ using System.Reflection;
 
 namespace Reflectify;
 
+#if REFLECTIFY_COMPILE
+public static class PropertyInfoExtensions
+#else
+[global::Microsoft.CodeAnalysis.Embedded]
+[global::System.Diagnostics.DebuggerNonUserCode]
 internal static class PropertyInfoExtensions
+#endif
 {
     /// <summary>
     /// Returns <see langword="true" /> if the property is an indexer, or <see langword="false" /> otherwise.

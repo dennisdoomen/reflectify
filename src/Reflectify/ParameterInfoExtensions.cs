@@ -11,7 +11,13 @@ using System.Reflection;
 
 namespace Reflectify;
 
+#if REFLECTIFY_COMPILE
+public static class ParameterInfoExtensions
+#else
+[global::Microsoft.CodeAnalysis.Embedded]
+[global::System.Diagnostics.DebuggerNonUserCode]
 internal static class ParameterInfoExtensions
+#endif
 {
     /// <summary>
     /// Returns <see langword="true" /> if the parameter is decorated with the specific <typeparamref name="TAttribute"/>,

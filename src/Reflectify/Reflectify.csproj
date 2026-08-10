@@ -8,13 +8,8 @@
         <NuSpecFile>.nuspec</NuSpecFile>
         <NuspecProperties>version=$(Version)</NuspecProperties>
         <DefineConstants>REFLECTIFY_COMPILE</DefineConstants>
+        <NoWarn>1591;1573</NoWarn>
     </PropertyGroup>
-
-  <ItemGroup Label="Internals visible to">
-    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
-      <_Parameter1>Reflectify.Specs</_Parameter1>
-    </AssemblyAttribute>
-  </ItemGroup>
 
   <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
       <DocumentationFile>bin\Debug\Reflectify.xml</DocumentationFile>
