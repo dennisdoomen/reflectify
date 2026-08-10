@@ -10,6 +10,10 @@ using System.Reflection;
 
 namespace Reflectify;
 
+// This fallback is only needed on frameworks that lack System.Reflection.NullabilityInfoContext (pre-.NET 6). On
+// net6.0-or-greater the extension methods use that API directly, so this whole type is excluded there to avoid it
+// being reported as uninstrumented/uncovered dead code.
+#if !NET6_0_OR_GREATER
 /// <summary>
 /// Provides the manual, attribute-based fallback used to determine nullable reference type metadata on target
 /// frameworks that don't have access to <c>System.Reflection.NullabilityInfoContext</c> (i.e. everything
@@ -142,3 +146,4 @@ internal static class NullabilityMetadataReader
         };
     }
 }
+#endif
