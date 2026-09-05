@@ -93,9 +93,10 @@ you would use `GetProperties` and `FindProperty`. To get metadata from an `Event
 `IsPublic`, `IsInternal` or `IsAbstract`, which check either the add or remove accessor.
 
 Constructors are not inherited, so `GetConstructors` and `FindConstructor` only look at the constructors declared
-directly on the type you ask for, using the same `MemberKind` visibility flags. `HasDefaultConstructor` tells you
-whether the type has a public parameterless constructor (or is a value type, which always has one), the kind of
-constructor `Activator.CreateInstance(Type)` requires.
+directly on the type you ask for, using the same `MemberKind` visibility flags. Omitting the parameter types on
+`FindConstructor` means the parameterless constructor, just like `Type.GetConstructor(Type.EmptyTypes)` does.
+`HasDefaultConstructor` tells you whether the type has a public parameterless constructor (or is a value type, which
+always has one), the kind of constructor `Activator.CreateInstance(Type)` requires.
 
 For a `FieldInfo`, you can use `GetNullability` and `IsNullableReference` in the same way as for `PropertyInfo`.
 

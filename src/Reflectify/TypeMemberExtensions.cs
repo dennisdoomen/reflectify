@@ -147,12 +147,13 @@ internal static class TypeMemberExtensions
     /// constructor exists.
     /// </summary>
     /// <remarks>
-    /// If you don't specify any parameter types, the constructor will be found only if the type has a single
-    /// constructor matching the requested visibility.
+    /// Unlike <see cref="FindMethod"/>, which has a name to disambiguate overloads, omitting the parameter types
+    /// here means the parameterless constructor, just like <c>Type.GetConstructor(Type.EmptyTypes)</c> does.
     /// </remarks>
     public static ConstructorInfo FindConstructor(this Type type, MemberKind kind, params Type[] parameterTypes)
     {
-        return type.GetConstructors(kind).SingleOrDefault(c => HasSameParameters(parameterTypes, c));
+        return Array.Find(type.GetConstructors(kind), c =>
+            c.GetParameters().Select(p => p.ParameterType).SequenceEqual(parameterTypes));
     }
 
     /// <summary>
@@ -165,7 +166,7 @@ internal static class TypeMemberExtensions
     /// </remarks>
     public static bool HasDefaultConstructor(this Type type)
     {
-        return type.IsValueType || type.GetConstructors(MemberKind.Public).Any(c => c.GetParameters().Length == 0);
+        return type.IsValueType || type.FindConstructor(MemberKind.Public) is not null;
     }
 
     private static Reflector GetFor(Type typeToReflect, MemberKind kind)
@@ -204,7 +205,7 @@ internal static class TypeMemberExtensions
         return type.FindMethod(methodName, memberKind);
     }
 
-    private static bool HasSameParameters(Type[] parameterTypes, MethodBase method)
+    private static bool HasSameParameters(Type[] parameterTypes, MethodInfo method)
     {
         if (parameterTypes.Length == 0)
         {

@@ -1263,6 +1263,79 @@ public class TypeMemberExtensionsSpecs
             // Assert
             events.Should().BeEmpty();
         }
+
+        [Fact]
+        public void Events_declared_on_a_base_class_are_returned_through_the_derived_type()
+        {
+            // Act
+            var events = typeof(DerivedClassWithEvents).GetEvents(MemberKind.Public);
+
+            // Assert
+            events.Should().BeEquivalentTo(new[]
+            {
+                new { Name = "HiddenEvent" },
+                new { Name = "DerivedEvent" },
+                new { Name = "BaseEvent" }
+            });
+        }
+
+        [Fact]
+        public void An_event_that_hides_its_base_class_name_sake_is_only_returned_once()
+        {
+            // Act
+            var events = typeof(DerivedClassWithEvents).GetEvents(MemberKind.Public);
+
+            // Assert
+            events.Should().ContainSingle(e => e.Name == "HiddenEvent")
+                .Which.DeclaringType.Should().Be(typeof(DerivedClassWithEvents));
+        }
+
+        [Fact]
+        public void Events_declared_on_an_interface_are_returned_when_reflecting_that_interface()
+        {
+            // Act
+            var events = typeof(IInterfaceWithSingleEvent).GetEvents(MemberKind.Public);
+
+            // Assert
+            events.Should().BeEquivalentTo(new[]
+            {
+                new { Name = "ExplicitlyImplementedEvent" }
+            });
+        }
+
+        [Fact]
+        public void Events_inherited_from_a_base_interface_are_returned_when_reflecting_an_interface()
+        {
+            // Act
+            var events = typeof(IInterfaceWithDefaultEvent).GetEvents(MemberKind.Public);
+
+            // Assert
+            events.Should().Contain(e => e.Name == "ExplicitlyImplementedEvent");
+        }
+
+        [Fact]
+        public void A_normal_event_wins_from_an_explicitly_implemented_one_in_a_base_class()
+        {
+            // Act
+            var events = typeof(DerivedClassWithNormalEvent).GetEvents(
+                MemberKind.Public | MemberKind.ExplicitlyImplemented);
+
+            // Assert
+            events.Should().ContainSingle()
+                .Which.DeclaringType.Should().Be(typeof(DerivedClassWithNormalEvent));
+        }
+
+        [Fact]
+        public void A_normal_event_in_a_base_class_wins_from_an_explicitly_implemented_one()
+        {
+            // Act
+            var events = typeof(DerivedClassWithExplicitEvent).GetEvents(
+                MemberKind.Public | MemberKind.ExplicitlyImplemented);
+
+            // Assert
+            events.Should().ContainSingle()
+                .Which.DeclaringType.Should().Be(typeof(BaseClassWithNormalEvent));
+        }
     }
 
     public class FindEvent
@@ -1399,6 +1472,46 @@ public class TypeMemberExtensionsSpecs
         }
 
         [Fact]
+        public void A_static_constructor_is_not_a_public_constructor()
+        {
+            // Act
+            var constructors = typeof(ClassWithConstructors).GetConstructors(MemberKind.Public);
+
+            // Assert
+            constructors.Should().NotContain(c => c.IsStatic);
+        }
+
+        [Fact]
+        public void A_private_constructor_is_not_a_public_constructor()
+        {
+            // Act
+            var constructors = typeof(ClassWithOnlyPrivateConstructor).GetConstructors(MemberKind.Public);
+
+            // Assert
+            constructors.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void Requesting_internal_constructors_also_returns_private_ones()
+        {
+            // Act
+            var constructors = typeof(ClassWithOnlyPrivateConstructor).GetConstructors(MemberKind.Internal);
+
+            // Assert
+            constructors.Should().ContainSingle().Which.IsPrivate.Should().BeTrue();
+        }
+
+        [Fact]
+        public void A_static_class_has_no_constructors_to_call()
+        {
+            // Act
+            var constructors = typeof(StaticClass).GetConstructors(MemberKind.Public | MemberKind.Internal);
+
+            // Assert
+            constructors.Should().BeEmpty();
+        }
+
+        [Fact]
         public void Can_get_the_static_constructor_if_you_ask_for_it()
         {
             // Act
@@ -1412,11 +1525,31 @@ public class TypeMemberExtensionsSpecs
         public void Can_find_a_parameterless_constructor()
         {
             // Act
-            var constructor = typeof(ClassWithSingleConstructor).FindConstructor(MemberKind.Public);
+            var constructor = typeof(ClassWithConstructors).FindConstructor(MemberKind.Public);
 
             // Assert
             constructor.Should().NotBeNull();
             constructor.GetParameters().Should().BeEmpty();
+        }
+
+        [Fact]
+        public void Omitting_the_parameter_types_finds_the_parameterless_constructor_rather_than_an_arbitrary_one()
+        {
+            // Act
+            var constructor = typeof(ClassWithConstructors).FindConstructor(MemberKind.Public);
+
+            // Assert
+            constructor.GetParameters().Should().BeEmpty();
+        }
+
+        [Fact]
+        public void A_type_without_a_parameterless_constructor_does_not_return_one_when_the_parameters_are_omitted()
+        {
+            // Act
+            var constructor = typeof(ClassWithOnlyParameterizedConstructor).FindConstructor(MemberKind.Public);
+
+            // Assert
+            constructor.Should().BeNull();
         }
 
         [Fact]
@@ -1461,7 +1594,7 @@ public class TypeMemberExtensionsSpecs
         }
 
         [Fact]
-        public void A_type_with_a_public_parameterless_constructor_has_a_default_constructor()
+        public void A_type_with_a_public_parameterless_constructor_next_to_other_public_ones_has_a_default_constructor()
         {
             // Act / Assert
             typeof(ClassWithConstructors).HasDefaultConstructor().Should().BeTrue();
@@ -1479,6 +1612,20 @@ public class TypeMemberExtensionsSpecs
         {
             // Act / Assert
             typeof(ClassWithOnlyInternalParameterlessConstructor).HasDefaultConstructor().Should().BeFalse();
+        }
+
+        [Fact]
+        public void A_type_with_only_a_private_constructor_has_no_default_constructor()
+        {
+            // Act / Assert
+            typeof(ClassWithOnlyPrivateConstructor).HasDefaultConstructor().Should().BeFalse();
+        }
+
+        [Fact]
+        public void A_static_class_has_no_default_constructor()
+        {
+            // Act / Assert
+            typeof(StaticClass).HasDefaultConstructor().Should().BeFalse();
         }
 
         [Fact]
@@ -1511,12 +1658,15 @@ public class TypeMemberExtensionsSpecs
             }
         }
 
-        private class ClassWithSingleConstructor
+        private class ClassWithOnlyPrivateConstructor
         {
-            [UsedImplicitly]
-            public ClassWithSingleConstructor()
+            private ClassWithOnlyPrivateConstructor()
             {
             }
+        }
+
+        private static class StaticClass
+        {
         }
 
         private class ClassWithOnlyParameterizedConstructor
@@ -1779,6 +1929,56 @@ public class TypeMemberExtensionsSpecs
     private interface IInterfaceWithSingleEvent
     {
         event EventHandler ExplicitlyImplementedEvent;
+    }
+
+#pragma warning disable CS0067 // Event is never used - these events exist only for reflection metadata purposes.
+    private class BaseClassWithEvents
+    {
+        [UsedImplicitly]
+        public event EventHandler BaseEvent;
+
+        [UsedImplicitly]
+        public event EventHandler HiddenEvent;
+    }
+
+    private sealed class DerivedClassWithEvents : BaseClassWithEvents
+    {
+        [UsedImplicitly]
+        public new event EventHandler HiddenEvent;
+
+        [UsedImplicitly]
+        public event EventHandler DerivedEvent;
+    }
+
+    private class BaseClassWithExplicitEvent : IInterfaceWithSingleEvent
+    {
+        event EventHandler IInterfaceWithSingleEvent.ExplicitlyImplementedEvent
+        {
+            add { }
+            remove { }
+        }
+    }
+
+    private sealed class DerivedClassWithNormalEvent : BaseClassWithExplicitEvent
+    {
+        [UsedImplicitly]
+        public event EventHandler ExplicitlyImplementedEvent;
+    }
+
+    private class BaseClassWithNormalEvent
+    {
+        [UsedImplicitly]
+        public event EventHandler ExplicitlyImplementedEvent;
+    }
+#pragma warning restore CS0067
+
+    private sealed class DerivedClassWithExplicitEvent : BaseClassWithNormalEvent, IInterfaceWithSingleEvent
+    {
+        event EventHandler IInterfaceWithSingleEvent.ExplicitlyImplementedEvent
+        {
+            add { }
+            remove { }
+        }
     }
 }
 
