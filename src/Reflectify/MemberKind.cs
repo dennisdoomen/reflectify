@@ -26,7 +26,9 @@ internal enum MemberKind
     Internal = 2,
     ExplicitlyImplemented = 4,
     DefaultInterfaceProperties = 8,
-    Static = 16
+    Static = 16,
+    Protected = 32,
+    Private = 64
 }
 
 #if REFLECTIFY_COMPILE
@@ -46,7 +48,7 @@ internal static class MemberKindExtensions
             flags |= BindingFlags.Public;
         }
 
-        if ((kind & MemberKind.Internal) != MemberKind.None)
+        if ((kind & (MemberKind.Internal | MemberKind.Protected | MemberKind.Private)) != MemberKind.None)
         {
             flags |= BindingFlags.NonPublic;
         }

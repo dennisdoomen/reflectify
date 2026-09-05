@@ -59,6 +59,24 @@ internal static class PropertyInfoExtensions
     }
 
     /// <summary>
+    /// Returns <see langword="true" /> if the property is protected, or <see langword="false" /> otherwise.
+    /// </summary>
+    /// <param name="prop">The property to check.</param>
+    public static bool IsProtected(this PropertyInfo prop)
+    {
+        return prop.GetMethod is { IsFamily: true } || prop.SetMethod is { IsFamily: true };
+    }
+
+    /// <summary>
+    /// Returns <see langword="true" /> if the property is private, or <see langword="false" /> otherwise.
+    /// </summary>
+    /// <param name="prop">The property to check.</param>
+    public static bool IsPrivate(this PropertyInfo prop)
+    {
+        return prop.GetMethod is { IsPrivate: true } || prop.SetMethod is { IsPrivate: true };
+    }
+
+    /// <summary>
     /// Returns <see langword="true" /> if the property is abstract, or <see langword="false" /> otherwise.
     /// </summary>
     /// <param name="prop">The property to check.</param>
