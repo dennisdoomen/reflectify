@@ -52,6 +52,19 @@ internal static class MemberInfoExtensions
     }
 
     /// <summary>
+    /// Returns <see langword="true" /> if the member or, by default, its declaring type is marked as obsolete.
+    /// </summary>
+    /// <param name="member">The member to inspect.</param>
+    /// <param name="includeDeclaringType">
+    /// Indicates whether obsolescence of the declaring type should also mark the member as obsolete.
+    /// </param>
+    public static bool IsObsolete(this MemberInfo member, bool includeDeclaringType = true)
+    {
+        return member.HasAttribute<ObsoleteAttribute>() ||
+               (includeDeclaringType && member.DeclaringType?.IsObsolete() == true);
+    }
+
+    /// <summary>
     /// Returns <see langword="true" /> if the member is marked with the C# 11 <see langword="required" />
     /// modifier, or <see langword="false" /> otherwise.
     /// </summary>

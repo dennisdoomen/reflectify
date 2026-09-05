@@ -251,6 +251,61 @@ public class TypeMetaDataExtensionsSpecs
         }
     }
 
+    public class IsObsolete
+    {
+        [Fact]
+        public void An_obsolete_type_is_obsolete()
+        {
+            // Act
+            bool result = typeof(ObsoleteType).IsObsolete();
+
+            // Assert
+            result.Should().BeTrue();
+        }
+
+        [Fact]
+        public void A_normal_type_is_not_obsolete()
+        {
+            // Act
+            bool result = typeof(SomeOtherClass).IsObsolete();
+
+            // Assert
+            result.Should().BeFalse();
+        }
+
+        [Fact]
+        public void Returns_the_obsolescence_message()
+        {
+            // Act
+            bool result = typeof(ObsoleteType).IsObsolete(out string message);
+
+            // Assert
+            result.Should().BeTrue();
+            message.Should().Be("Use another type");
+        }
+
+        [Fact]
+        public void Returns_an_empty_message_when_the_obsolete_type_has_no_message()
+        {
+            // Act
+            bool result = typeof(ObsoleteTypeWithoutMessage).IsObsolete(out string message);
+
+            // Assert
+            result.Should().BeTrue();
+            message.Should().BeEmpty();
+        }
+
+        [Obsolete("Use another type")]
+        private class ObsoleteType
+        {
+        }
+
+        [Obsolete]
+        private class ObsoleteTypeWithoutMessage
+        {
+        }
+    }
+
     public class GetMatchingAttributes
     {
         [Fact]

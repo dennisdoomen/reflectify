@@ -100,6 +100,76 @@ public class MemberInfoExtensionsSpecs
         }
     }
 
+    public class IsObsolete
+    {
+        [Fact]
+        public void An_obsolete_member_is_obsolete()
+        {
+            // Arrange
+            MemberInfo member = typeof(ClassWithAttributedMember).GetMethod("Method");
+
+            // Act
+            bool result = member.IsObsolete();
+
+            // Assert
+            result.Should().BeTrue();
+        }
+
+        [Fact]
+        public void A_member_on_an_obsolete_type_is_obsolete_by_default()
+        {
+            // Arrange
+            MemberInfo member = typeof(ObsoleteClass).GetMethod("Method");
+
+            // Act
+            bool result = member.IsObsolete();
+
+            // Assert
+            result.Should().BeTrue();
+        }
+
+        [Fact]
+        public void A_member_on_an_obsolete_type_can_ignore_the_declaring_type()
+        {
+            // Arrange
+            MemberInfo member = typeof(ObsoleteClass).GetMethod("Method");
+
+            // Act
+            bool result = member.IsObsolete(includeDeclaringType: false);
+
+            // Assert
+            result.Should().BeFalse();
+        }
+
+        [Fact]
+        public void A_member_on_a_normal_type_is_not_obsolete()
+        {
+            // Arrange
+            MemberInfo member = typeof(NormalClass).GetMethod("Method");
+
+            // Act
+            bool result = member.IsObsolete();
+
+            // Assert
+            result.Should().BeFalse();
+        }
+
+        [Obsolete]
+        private class ObsoleteClass
+        {
+            public void Method()
+            {
+            }
+        }
+
+        private class NormalClass
+        {
+            public void Method()
+            {
+            }
+        }
+    }
+
     private class ClassWithAttributedMember
     {
         [Obsolete("Specific reason")]
