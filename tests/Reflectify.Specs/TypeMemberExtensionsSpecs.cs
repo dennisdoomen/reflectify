@@ -1005,10 +1005,20 @@ public class TypeMemberExtensionsSpecs
         public void Can_find_a_static_method()
         {
             // Act
-            var method = typeof(ClassWithMethods).FindMethod("StaticMethod", MemberKind.Public);
+            var method = typeof(ClassWithMethods).FindMethod("StaticMethod", MemberKind.Public | MemberKind.Static);
 
             // Assert
             method.Should().NotBeNull();
+        }
+
+        [Fact]
+        public void Cannot_find_a_static_method_if_you_dont_ask_for_it()
+        {
+            // Act
+            var method = typeof(ClassWithMethods).FindMethod("StaticMethod", MemberKind.Public);
+
+            // Assert
+            method.Should().BeNull();
         }
 
         [Fact]
@@ -1139,13 +1149,33 @@ public class TypeMemberExtensionsSpecs
         }
 
         [Fact]
-        public void A_private_method_declared_on_a_base_type_is_out_of_reach()
+        public void A_private_method_declared_on_a_base_type_is_not_an_internal_one()
         {
             // Act
             var method = typeof(SubClassHidingABaseMethod).FindMethod("PrivateBaseMethod", MemberKind.Internal);
 
             // Assert
             method.Should().BeNull();
+        }
+
+        [Fact]
+        public void A_private_method_declared_on_a_base_type_is_found_if_you_ask_for_private_ones()
+        {
+            // Act
+            var method = typeof(SubClassHidingABaseMethod).FindMethod("PrivateBaseMethod", MemberKind.Private);
+
+            // Assert
+            method.Should().NotBeNull();
+            method.DeclaringType.Should().Be(typeof(BaseClassWithAHiddenMethod));
+        }
+
+        [Fact]
+        public void A_protected_method_declared_on_a_base_type_is_found_if_you_ask_for_protected_ones()
+        {
+            // Act / Assert
+            typeof(SubClassHidingABaseMethod)
+                .HasMethod("ProtectedBaseMethod", MemberKind.Protected)
+                .Should().BeTrue();
         }
 
         [Fact]
@@ -1182,6 +1212,9 @@ public class TypeMemberExtensionsSpecs
 
             [UsedImplicitly]
             private bool PrivateBaseMethod() => true;
+
+            [UsedImplicitly]
+            protected bool ProtectedBaseMethod() => true;
         }
 
         private sealed class SubClassHidingABaseMethod : BaseClassWithAHiddenMethod
@@ -1368,6 +1401,49 @@ public class TypeMemberExtensionsSpecs
         }
 
         [Fact]
+        public void Can_get_protected_methods()
+        {
+            // Act
+            var methods = typeof(SuperClassWithMethods).GetMethods(MemberKind.Protected);
+
+            // Assert
+            methods.Select(m => m.Name).Should().BeEquivalentTo("ProtectedMethod");
+        }
+
+        [Fact]
+        public void Can_get_private_methods()
+        {
+            // Act
+            var methods = typeof(SuperClassWithMethods).GetMethods(MemberKind.Private);
+
+            // Assert
+            methods.Select(m => m.Name).Should().BeEquivalentTo("PrivateMethod");
+        }
+
+        [Fact]
+        public void Can_combine_protected_and_private_methods_with_public()
+        {
+            // Act
+            var methods = typeof(SuperClassWithMethods).GetMethods(
+                MemberKind.Public | MemberKind.Protected | MemberKind.Private);
+
+            // Assert
+            methods.Select(m => m.Name).Should().BeEquivalentTo(
+                "NormalMethod", "OverriddenMethod", "HiddenMethod", "InterfaceMethod", "ProtectedMethod", "PrivateMethod");
+        }
+
+        [Fact]
+        public void A_private_method_declared_on_a_base_type_is_reachable_because_every_type_is_inspected_separately()
+        {
+            // Act
+            var methods = typeof(SuperClassWithMethods).GetMethods(MemberKind.Private);
+
+            // Assert
+            methods.Should().ContainSingle(m => m.Name == "PrivateMethod")
+                .Which.DeclaringType.Should().Be(typeof(BaseClassWithMethods));
+        }
+
+        [Fact]
         public void Does_not_duplicate_an_overridden_method()
         {
             // Act
@@ -1418,6 +1494,9 @@ public class TypeMemberExtensionsSpecs
 
             [UsedImplicitly]
             public string HiddenMethod() => "base";
+
+            [UsedImplicitly]
+            private string PrivateMethod() => "private";
         }
 
         private class SuperClassWithMethods : BaseClassWithMethods, IInterfaceWithDefaultMethod
@@ -1439,6 +1518,9 @@ public class TypeMemberExtensionsSpecs
 
             [UsedImplicitly]
             protected internal bool InternalProtectedMethod() => true;
+
+            [UsedImplicitly]
+            protected string ProtectedMethod() => "protected";
 
             string IInterfaceWithSingleMethod.ExplicitlyImplementedMethod() => "explicit";
 
