@@ -90,7 +90,7 @@ and `FindExplicitConversionOperators`, and methods via `FindMethod`, `FindParame
 
 Events follow the same visibility and hierarchy rules as properties, so use `GetEvents` and `FindEvent` the same way
 you would use `GetProperties` and `FindProperty`. To get metadata from an `EventInfo`, use `IsExplicitlyImplemented`,
-`IsPublic`, `IsInternal` or `IsAbstract`, which check either the add or remove accessor.
+`IsPublic`, `IsInternal`, `IsProtected`, `IsPrivate` or `IsAbstract`, which check either the add or remove accessor.
 
 Constructors are not inherited, so `GetConstructors` and `FindConstructor` only look at the constructors declared
 directly on the type you ask for, using the same `MemberKind` visibility flags. Omitting the parameter types on

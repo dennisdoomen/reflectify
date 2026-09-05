@@ -50,6 +50,24 @@ internal static class EventInfoExtensions
     }
 
     /// <summary>
+    /// Returns <see langword="true" /> if the event is protected, or <see langword="false" /> otherwise.
+    /// </summary>
+    /// <param name="eventInfo">The event to check.</param>
+    public static bool IsProtected(this EventInfo eventInfo)
+    {
+        return eventInfo.AddMethod is { IsFamily: true } || eventInfo.RemoveMethod is { IsFamily: true };
+    }
+
+    /// <summary>
+    /// Returns <see langword="true" /> if the event is private, or <see langword="false" /> otherwise.
+    /// </summary>
+    /// <param name="eventInfo">The event to check.</param>
+    public static bool IsPrivate(this EventInfo eventInfo)
+    {
+        return eventInfo.AddMethod is { IsPrivate: true } || eventInfo.RemoveMethod is { IsPrivate: true };
+    }
+
+    /// <summary>
     /// Returns <see langword="true" /> if the event is abstract, or <see langword="false" /> otherwise.
     /// </summary>
     /// <param name="eventInfo">The event to check.</param>

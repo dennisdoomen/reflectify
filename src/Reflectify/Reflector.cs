@@ -230,7 +230,8 @@ internal sealed class Reflector(Type typeToReflect, MemberKind kind)
 
     private static void AddNormalEvents(MemberKind kind, EventInfo[] allEvents, OrderedEventCollection selectedEvents)
     {
-        if ((kind & (MemberKind.Public | MemberKind.Internal | MemberKind.ExplicitlyImplemented)) != MemberKind.None)
+        if ((kind & (MemberKind.Public | MemberKind.Internal | MemberKind.Protected | MemberKind.Private |
+                MemberKind.ExplicitlyImplemented)) != MemberKind.None)
         {
             foreach (var @event in allEvents)
             {
@@ -245,7 +246,9 @@ internal sealed class Reflector(Type typeToReflect, MemberKind kind)
     private static bool HasVisibility(MemberKind kind, EventInfo @event)
     {
         return ((kind & MemberKind.Public) != MemberKind.None && @event.IsPublic()) ||
-               ((kind & MemberKind.Internal) != MemberKind.None && @event.IsInternal());
+               ((kind & MemberKind.Internal) != MemberKind.None && @event.IsInternal()) ||
+               ((kind & MemberKind.Protected) != MemberKind.None && @event.IsProtected()) ||
+               ((kind & MemberKind.Private) != MemberKind.None && @event.IsPrivate());
     }
 
     private static void AddExplicitlyImplementedEvents(MemberKind kind, EventInfo[] allEvents, OrderedEventCollection selectedEvents)

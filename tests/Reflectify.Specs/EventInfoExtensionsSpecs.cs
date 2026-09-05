@@ -84,6 +84,72 @@ public class EventInfoExtensionsSpecs
         }
     }
 
+    public class IsProtected
+    {
+        [Fact]
+        public void A_protected_event_is_protected()
+        {
+            // Act
+            EventInfo @event = typeof(ClassWithEvents).GetEvent("ProtectedEvent", NonPublicInstance);
+
+            // Assert
+            @event.IsProtected().Should().BeTrue();
+        }
+
+        [Fact]
+        public void A_protected_internal_event_is_not_protected()
+        {
+            // Act
+            EventInfo @event = typeof(ClassWithEvents).GetEvent("ProtectedInternalEvent", NonPublicInstance);
+
+            // Assert
+            @event.IsProtected().Should().BeFalse();
+        }
+
+        [Fact]
+        public void A_public_event_is_not_protected()
+        {
+            // Act
+            EventInfo @event = typeof(ClassWithEvents).GetEvent("PublicEvent");
+
+            // Assert
+            @event.IsProtected().Should().BeFalse();
+        }
+    }
+
+    public class IsPrivate
+    {
+        [Fact]
+        public void A_private_event_is_private()
+        {
+            // Act
+            EventInfo @event = typeof(ClassWithEvents).GetEvent("PrivateEvent", NonPublicInstance);
+
+            // Assert
+            @event.IsPrivate().Should().BeTrue();
+        }
+
+        [Fact]
+        public void A_protected_event_is_not_private()
+        {
+            // Act
+            EventInfo @event = typeof(ClassWithEvents).GetEvent("ProtectedEvent", NonPublicInstance);
+
+            // Assert
+            @event.IsPrivate().Should().BeFalse();
+        }
+
+        [Fact]
+        public void A_public_event_is_not_private()
+        {
+            // Act
+            EventInfo @event = typeof(ClassWithEvents).GetEvent("PublicEvent");
+
+            // Assert
+            @event.IsPrivate().Should().BeFalse();
+        }
+    }
+
     public class IsAbstract
     {
         [Fact]
@@ -190,6 +256,9 @@ public class EventInfoExtensionsSpecs
 
         [UsedImplicitly]
         protected internal event EventHandler ProtectedInternalEvent;
+
+        [UsedImplicitly]
+        protected event EventHandler ProtectedEvent;
 
         [UsedImplicitly]
         private event EventHandler PrivateEvent;

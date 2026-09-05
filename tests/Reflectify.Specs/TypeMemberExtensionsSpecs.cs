@@ -1197,6 +1197,42 @@ public class TypeMemberExtensionsSpecs
         }
 
         [Fact]
+        public void Can_get_protected_events()
+        {
+            // Act
+            var events = typeof(ClassWithEvents).GetEvents(MemberKind.Protected);
+
+            // Assert
+            events.Should().BeEquivalentTo(new[]
+            {
+                new { Name = "ProtectedEvent" }
+            });
+        }
+
+        [Fact]
+        public void Can_get_private_events()
+        {
+            // Act
+            var events = typeof(ClassWithEvents).GetEvents(MemberKind.Private);
+
+            // Assert
+            events.Should().BeEquivalentTo(new[]
+            {
+                new { Name = "PrivateEvent" }
+            });
+        }
+
+        [Fact]
+        public void A_protected_event_is_not_an_internal_one()
+        {
+            // Act
+            var events = typeof(ClassWithEvents).GetEvents(MemberKind.Internal);
+
+            // Assert
+            events.Should().NotContain(e => e.Name == "ProtectedEvent");
+        }
+
+        [Fact]
         public void Can_get_explicit_events_only()
         {
             // Act
@@ -1492,10 +1528,10 @@ public class TypeMemberExtensionsSpecs
         }
 
         [Fact]
-        public void Requesting_internal_constructors_also_returns_private_ones()
+        public void Can_get_a_private_constructor_if_you_ask_for_it()
         {
             // Act
-            var constructors = typeof(ClassWithOnlyPrivateConstructor).GetConstructors(MemberKind.Internal);
+            var constructors = typeof(ClassWithOnlyPrivateConstructor).GetConstructors(MemberKind.Private);
 
             // Assert
             constructors.Should().ContainSingle().Which.IsPrivate.Should().BeTrue();
@@ -1892,6 +1928,12 @@ public class TypeMemberExtensionsSpecs
 
         [UsedImplicitly]
         internal event EventHandler InternalEvent;
+
+        [UsedImplicitly]
+        protected event EventHandler ProtectedEvent;
+
+        [UsedImplicitly]
+        private event EventHandler PrivateEvent;
 #pragma warning restore CS0067
 
         event EventHandler IInterfaceWithSingleEvent.ExplicitlyImplementedEvent
