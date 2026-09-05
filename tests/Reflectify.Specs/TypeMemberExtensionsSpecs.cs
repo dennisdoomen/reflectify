@@ -1147,6 +1147,255 @@ public class TypeMemberExtensionsSpecs
         }
     }
 
+    public class GetMethods
+    {
+        [Fact]
+        public void Can_get_normal_public_methods()
+        {
+            // Act
+            var methods = typeof(SuperClassWithMethods).GetMethods(MemberKind.Public);
+
+            // Assert
+            methods.Select(m => m.Name).Should().BeEquivalentTo(
+                "NormalMethod", "OverriddenMethod", "HiddenMethod", "InterfaceMethod");
+        }
+
+        [Fact]
+        public void Can_get_all_public_explicit_and_default_instance_interface_methods()
+        {
+            // Act
+            var methods = typeof(SuperClassWithMethods).GetMethods(
+                MemberKind.Public | MemberKind.ExplicitlyImplemented | MemberKind.DefaultInterfaceProperties);
+
+            // Assert
+            methods.Select(m => m.Name).Should().BeEquivalentTo([
+                "NormalMethod", "OverriddenMethod", "HiddenMethod", "InterfaceMethod",
+                $"{typeof(IInterfaceWithSingleMethod).FullName!.Replace("+", ".")}.ExplicitlyImplementedMethod",
+#if NETCOREAPP3_0_OR_GREATER
+                "DefaultMethod"
+#endif
+            ]);
+        }
+
+        [Fact]
+        public void Can_get_all_methods_from_an_interface()
+        {
+            // Act
+            var methods = typeof(IInterfaceWithDefaultMethod).GetMethods(MemberKind.Public);
+
+            // Assert
+            methods.Select(m => m.Name).Should().BeEquivalentTo([
+                "InterfaceMethod",
+                "ExplicitlyImplementedMethod",
+#if NETCOREAPP3_0_OR_GREATER
+                "DefaultMethod"
+#endif
+            ]);
+        }
+
+        [Fact]
+        public void Can_get_explicit_methods_only()
+        {
+            // Act
+            var methods = typeof(SuperClassWithMethods).GetMethods(MemberKind.ExplicitlyImplemented);
+
+            // Assert
+            methods.Select(m => m.Name).Should().BeEquivalentTo(
+                $"{typeof(IInterfaceWithSingleMethod).FullName!.Replace("+", ".")}.ExplicitlyImplementedMethod");
+        }
+
+        [Fact]
+        public void Prefers_normal_method_over_explicitly_implemented_one()
+        {
+            // Act
+            var methods = typeof(ClassWithExplicitAndNormalMethod).GetMethods(
+                MemberKind.Public | MemberKind.ExplicitlyImplemented);
+
+            // Assert
+            methods.Should().ContainSingle()
+                .Which.Should().Match<MethodInfo>(m =>
+                    m.Name == "ExplicitlyImplementedMethod" && m.DeclaringType == typeof(ClassWithExplicitAndNormalMethod));
+        }
+
+#if NETCOREAPP3_0_OR_GREATER
+        [Fact]
+        public void Can_get_default_interface_methods_only()
+        {
+            // Act
+            var methods = typeof(SuperClassWithMethods).GetMethods(MemberKind.DefaultInterfaceProperties);
+
+            // Assert
+            methods.Select(m => m.Name).Should().BeEquivalentTo("DefaultMethod");
+        }
+#endif
+
+        [Fact]
+        public void Can_get_internal_methods()
+        {
+            // Act
+            var methods = typeof(SuperClassWithMethods).GetMethods(MemberKind.Internal);
+
+            // Assert
+            methods.Select(m => m.Name).Should().BeEquivalentTo("InternalMethod", "InternalProtectedMethod");
+        }
+
+        [Fact]
+        public void Can_get_all_public_static_methods()
+        {
+            // Act
+            var methods = typeof(SuperClassWithMethods).GetMethods(MemberKind.Public | MemberKind.Static);
+
+            // Assert
+            methods.Select(m => m.Name).Should().BeEquivalentTo("StaticMethod");
+        }
+
+        [Fact]
+        public void Supports_returning_no_methods_if_asked_for()
+        {
+            // Act
+            var methods = typeof(SuperClassWithMethods).GetMethods(MemberKind.None);
+
+            // Assert
+            methods.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void Does_not_duplicate_an_overridden_method()
+        {
+            // Act
+            var methods = typeof(SuperClassWithMethods).GetMethods(MemberKind.Public);
+
+            // Assert
+            methods.Should().ContainSingle(m => m.Name == "OverriddenMethod")
+                .Which.DeclaringType.Should().Be(typeof(SuperClassWithMethods));
+        }
+
+        [Fact]
+        public void Does_not_duplicate_a_method_hidden_with_the_new_keyword()
+        {
+            // Act
+            var methods = typeof(SuperClassWithMethods).GetMethods(MemberKind.Public);
+
+            // Assert
+            methods.Should().ContainSingle(m => m.Name == "HiddenMethod")
+                .Which.DeclaringType.Should().Be(typeof(SuperClassWithMethods));
+        }
+
+        [Fact]
+        public void Ignores_special_name_methods_like_property_accessors_events_indexers_and_operators()
+        {
+            // Act
+            var methods = typeof(ClassWithSpecialNameMethods).GetMethods(MemberKind.Public);
+
+            // Assert
+            methods.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void Can_get_method_overloads()
+        {
+            // Act
+            var methods = typeof(ClassWithMethodOverloads).GetMethods(MemberKind.Public);
+
+            // Assert
+            methods.Should().HaveCount(2);
+            methods.Should().Contain(m => m.Name == "Do" && m.GetParameters().Length == 0);
+            methods.Should().Contain(m => m.Name == "Do" && m.GetParameters().Length == 1);
+        }
+
+        private class BaseClassWithMethods
+        {
+            [UsedImplicitly]
+            public virtual string OverriddenMethod() => "base";
+
+            [UsedImplicitly]
+            public string HiddenMethod() => "base";
+        }
+
+        private class SuperClassWithMethods : BaseClassWithMethods, IInterfaceWithDefaultMethod
+        {
+            [UsedImplicitly]
+            public string NormalMethod() => "normal";
+
+            [UsedImplicitly]
+            public override string OverriddenMethod() => "super";
+
+            [UsedImplicitly]
+            public new string HiddenMethod() => "super";
+
+            [UsedImplicitly]
+            public static bool StaticMethod() => true;
+
+            [UsedImplicitly]
+            internal bool InternalMethod() => true;
+
+            [UsedImplicitly]
+            protected internal bool InternalProtectedMethod() => true;
+
+            string IInterfaceWithSingleMethod.ExplicitlyImplementedMethod() => "explicit";
+
+            [UsedImplicitly]
+            public string InterfaceMethod() => "interface";
+        }
+
+        private interface IInterfaceWithSingleMethod
+        {
+            [UsedImplicitly]
+            string ExplicitlyImplementedMethod();
+        }
+
+        private interface IInterfaceWithDefaultMethod : IInterfaceWithSingleMethod
+        {
+            [UsedImplicitly]
+            string InterfaceMethod();
+
+#if NETCOREAPP3_0_OR_GREATER
+            [UsedImplicitly]
+            string DefaultMethod() => "Default";
+#endif
+        }
+
+        private sealed class ClassWithExplicitAndNormalMethod : IInterfaceWithSingleMethod
+        {
+            string IInterfaceWithSingleMethod.ExplicitlyImplementedMethod() => "explicit";
+
+            [UsedImplicitly]
+            public string ExplicitlyImplementedMethod() => "normal";
+        }
+
+        private sealed class ClassWithMethodOverloads
+        {
+            [UsedImplicitly]
+            public void Do()
+            {
+            }
+
+            [UsedImplicitly]
+            public void Do(int number)
+            {
+            }
+        }
+
+        private sealed class ClassWithSpecialNameMethods
+        {
+            [UsedImplicitly]
+            public int Foo { get; set; }
+
+            [UsedImplicitly]
+            public event EventHandler SomeEvent
+            {
+                add { }
+                remove { }
+            }
+
+            [UsedImplicitly]
+            public string this[int index] => index.ToString(CultureInfo.InvariantCulture);
+
+            [UsedImplicitly]
+            public static explicit operator int(ClassWithSpecialNameMethods instance) => 42;
+        }
+    }
+
     public class GetEvents
     {
         [Fact]

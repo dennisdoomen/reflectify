@@ -87,6 +87,9 @@ To get more metadata from a `PropertyInfo`, you can use extensions methods like:
 
 Similarly, you can find indexers using `FindIndexers`, conversion operators through `FindImplicitConversionOperators`
 and `FindExplicitConversionOperators`, and methods via `FindMethod`, `FindParameterlessMethod` and `HasMethod`.
+You can also enumerate all the methods of a type hierarchy with `GetMethods`, using the same `MemberKind` options as
+`GetProperties`. It skips property/event accessors, indexers and operators by default, and de-duplicates overridden
+or `new`-hidden methods so only the most derived one is returned.
 
 Events follow the same visibility and hierarchy rules as properties, so use `GetEvents` and `FindEvent` the same way
 you would use `GetProperties` and `FindProperty`. To get metadata from an `EventInfo`, use `IsExplicitlyImplemented`,
