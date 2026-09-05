@@ -26,6 +26,7 @@ internal sealed class Reflector(Type typeToReflect, MemberKind kind)
     private readonly object lazyLoadingLock = new();
     private volatile PropertyInfo[] cachedProperties;
     private volatile FieldInfo[] cachedFields;
+    private volatile EventInfo[] cachedEvents;
 
     public MemberInfo[] Members => [.. Properties, .. Fields];
 
@@ -64,6 +65,25 @@ internal sealed class Reflector(Type typeToReflect, MemberKind kind)
             }
 
             return cachedFields;
+        }
+    }
+
+    public EventInfo[] Events
+    {
+        get
+        {
+            if (cachedEvents is null)
+            {
+                lock (lazyLoadingLock)
+                {
+                    if (cachedEvents is null)
+                    {
+                        cachedEvents = LoadEvents(typeToReflect, kind);
+                    }
+                }
+            }
+
+            return cachedEvents;
         }
     }
 
@@ -184,6 +204,85 @@ internal sealed class Reflector(Type typeToReflect, MemberKind kind)
                ((kind & MemberKind.Private) != MemberKind.None && field.IsPrivate);
     }
 
+    private static EventInfo[] LoadEvents(Type typeToReflect, MemberKind kind)
+    {
+        var selectedEvents = new OrderedEventCollection();
+
+        while (typeToReflect != null && typeToReflect != typeof(object))
+        {
+            BindingFlags flags = BindingFlags.DeclaredOnly | BindingFlags.Public | BindingFlags.NonPublic;
+            flags |= (kind & MemberKind.Static) != MemberKind.None ? BindingFlags.Static : BindingFlags.Instance;
+
+            var allEvents = typeToReflect.GetEvents(flags);
+
+            AddNormalEvents(kind, allEvents, selectedEvents);
+
+            AddExplicitlyImplementedEvents(kind, allEvents, selectedEvents);
+
+            AddInterfaceEvents(typeToReflect, kind, flags, selectedEvents);
+
+            // Move to the base type
+            typeToReflect = typeToReflect.BaseType;
+        }
+
+        return selectedEvents.ToArray();
+    }
+
+    private static void AddNormalEvents(MemberKind kind, EventInfo[] allEvents, OrderedEventCollection selectedEvents)
+    {
+        if ((kind & (MemberKind.Public | MemberKind.Internal | MemberKind.ExplicitlyImplemented)) != MemberKind.None)
+        {
+            foreach (var @event in allEvents)
+            {
+                if (HasVisibility(kind, @event) && !@event.IsExplicitlyImplemented())
+                {
+                    selectedEvents.AddNormal(@event);
+                }
+            }
+        }
+    }
+
+    private static bool HasVisibility(MemberKind kind, EventInfo @event)
+    {
+        return ((kind & MemberKind.Public) != MemberKind.None && @event.IsPublic()) ||
+               ((kind & MemberKind.Internal) != MemberKind.None && @event.IsInternal());
+    }
+
+    private static void AddExplicitlyImplementedEvents(MemberKind kind, EventInfo[] allEvents, OrderedEventCollection selectedEvents)
+    {
+        if ((kind & MemberKind.ExplicitlyImplemented) != MemberKind.None)
+        {
+            foreach (var @event in allEvents)
+            {
+                if (@event.IsExplicitlyImplemented())
+                {
+                    selectedEvents.AddExplicitlyImplemented(@event);
+                }
+            }
+        }
+    }
+
+#pragma warning disable AV1561
+    private static void AddInterfaceEvents(Type typeToReflect, MemberKind kind, BindingFlags flags, OrderedEventCollection selectedEvents)
+    {
+        if ((kind & MemberKind.DefaultInterfaceProperties) != MemberKind.None || typeToReflect.IsInterface)
+        {
+            var interfaces = typeToReflect.GetInterfaces();
+
+            foreach (var interfaceType in interfaces)
+            {
+                foreach (var @event in interfaceType.GetEvents(flags))
+                {
+                    if (!@event.IsAbstract() || typeToReflect.IsInterface)
+                    {
+                        selectedEvents.AddFromInterface(@event);
+                    }
+                }
+            }
+        }
+    }
+#pragma warning restore AV1561
+
     private sealed class OrderedPropertyCollection
     {
         private readonly Dictionary<string, PropertyKind> kindMap = new();
@@ -255,6 +354,77 @@ internal sealed class Reflector(Type typeToReflect, MemberKind kind)
             else
             {
                 // Property with that name already exists
+            }
+        }
+    }
+
+    private sealed class OrderedEventCollection
+    {
+        private readonly Dictionary<string, EventKind> kindMap = new();
+        private readonly List<(string Name, EventInfo Event)> eventsWithName = new();
+
+        public EventInfo[] ToArray()
+        {
+            var result = new EventInfo[eventsWithName.Count];
+
+            for (int i = 0; i < eventsWithName.Count; i++)
+            {
+                result[i] = eventsWithName[i].Event;
+            }
+
+            return result;
+        }
+
+        private enum EventKind
+        {
+            Normal,
+            ExplicitlyImplemented,
+            Interface
+        }
+
+        public void AddExplicitlyImplemented(EventInfo @event)
+        {
+            var name = @event.Name.Split('.').Last();
+
+            Add(name, @event, EventKind.ExplicitlyImplemented);
+        }
+
+        public void AddNormal(EventInfo @event)
+        {
+            Add(@event.Name, @event, EventKind.Normal);
+        }
+
+        public void AddFromInterface(EventInfo @event)
+        {
+            Add(@event.Name, @event, EventKind.Interface);
+        }
+
+        private void Add(string name, EventInfo @event, EventKind kind)
+        {
+            if (!kindMap.TryGetValue(name, out var existingKind))
+            {
+                kindMap[name] = kind;
+                eventsWithName.Add((name, @event));
+            }
+            else if (existingKind == EventKind.ExplicitlyImplemented && kind == EventKind.Normal)
+            {
+                // Normal events have priority over explicitly implemented events
+                kindMap[name] = kind;
+
+                for (int i = 0; i < eventsWithName.Count; i++)
+                {
+                    if (eventsWithName[i].Name == name)
+                    {
+                        eventsWithName[i] = (name, @event);
+                        return;
+                    }
+                }
+
+                eventsWithName.Add((name, @event));
+            }
+            else
+            {
+                // Event with that name already exists
             }
         }
     }

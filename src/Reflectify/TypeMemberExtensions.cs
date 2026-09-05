@@ -93,6 +93,81 @@ internal static class TypeMemberExtensions
         return GetFor(type, kind).Members;
     }
 
+    /// <summary>
+    /// Gets the public, internal, explicitly implemented and/or default events of a type hierarchy.
+    /// </summary>
+    /// <param name="type">The type to reflect.</param>
+    /// <param name="kind">The kind of events to include in the response.</param>
+    public static EventInfo[] GetEvents(this Type type, MemberKind kind)
+    {
+        return GetFor(type, kind).Events;
+    }
+
+    /// <summary>
+    /// Finds the event by a case-sensitive name and with a certain visibility.
+    /// </summary>
+    /// <remarks>
+    /// Normal events get priority over explicitly implemented events and default interface events.
+    /// </remarks>
+    /// <returns>
+    /// Returns <see langword="null" /> if no such event exists.
+    /// </returns>
+    public static EventInfo FindEvent(this Type type, string eventName, MemberKind memberVisibility)
+    {
+        if (eventName is null or "")
+        {
+            throw new ArgumentException("The event name cannot be null or empty", nameof(eventName));
+        }
+
+        var events = type.GetEvents(memberVisibility);
+
+        return Array.Find(events, e =>
+            e.Name == eventName || e.Name.EndsWith("." + eventName, StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// Gets the public and/or internal constructors of a type.
+    /// </summary>
+    /// <remarks>
+    /// Unlike properties, fields and events, constructors are not inherited, so only the constructors declared
+    /// directly on <paramref name="type"/> are returned.
+    /// </remarks>
+    /// <param name="type">The type to reflect.</param>
+    /// <param name="kind">The kind of constructors to include in the response.</param>
+    public static ConstructorInfo[] GetConstructors(this Type type, MemberKind kind)
+    {
+        BindingFlags flags = kind.ToBindingFlags();
+        flags |= (kind & MemberKind.Static) != MemberKind.None ? BindingFlags.Static : BindingFlags.Instance;
+
+        return type.GetConstructors(flags);
+    }
+
+    /// <summary>
+    /// Finds a constructor by its parameter types and visibility. Returns <see langword="null" /> if no such
+    /// constructor exists.
+    /// </summary>
+    /// <remarks>
+    /// If you don't specify any parameter types, the constructor will be found only if the type has a single
+    /// constructor matching the requested visibility.
+    /// </remarks>
+    public static ConstructorInfo FindConstructor(this Type type, MemberKind kind, params Type[] parameterTypes)
+    {
+        return type.GetConstructors(kind).SingleOrDefault(c => HasSameParameters(parameterTypes, c));
+    }
+
+    /// <summary>
+    /// Determines whether the type has a public parameterless constructor, i.e. the kind of constructor that
+    /// <see cref="Activator.CreateInstance(Type)"/> requires to create an instance of a reference type.
+    /// </summary>
+    /// <remarks>
+    /// Value types always have an implicit parameterless constructor, so this always returns <see langword="true" />
+    /// for those.
+    /// </remarks>
+    public static bool HasDefaultConstructor(this Type type)
+    {
+        return type.IsValueType || type.GetConstructors(MemberKind.Public).Any(c => c.GetParameters().Length == 0);
+    }
+
     private static Reflector GetFor(Type typeToReflect, MemberKind kind)
     {
         return ReflectorCache.GetOrAdd((typeToReflect, kind),
@@ -129,7 +204,7 @@ internal static class TypeMemberExtensions
         return type.FindMethod(methodName, memberKind);
     }
 
-    private static bool HasSameParameters(Type[] parameterTypes, MethodInfo method)
+    private static bool HasSameParameters(Type[] parameterTypes, MethodBase method)
     {
         if (parameterTypes.Length == 0)
         {

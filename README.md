@@ -88,6 +88,15 @@ To get more metadata from a `PropertyInfo`, you can use extensions methods like:
 Similarly, you can find indexers using `FindIndexers`, conversion operators through `FindImplicitConversionOperators`
 and `FindExplicitConversionOperators`, and methods via `FindMethod`, `FindParameterlessMethod` and `HasMethod`.
 
+Events follow the same visibility and hierarchy rules as properties, so use `GetEvents` and `FindEvent` the same way
+you would use `GetProperties` and `FindProperty`. To get metadata from an `EventInfo`, use `IsExplicitlyImplemented`,
+`IsPublic`, `IsInternal` or `IsAbstract`, which check either the add or remove accessor.
+
+Constructors are not inherited, so `GetConstructors` and `FindConstructor` only look at the constructors declared
+directly on the type you ask for, using the same `MemberKind` visibility flags. `HasDefaultConstructor` tells you
+whether the type has a public parameterless constructor (or is a value type, which always has one), the kind of
+constructor `Activator.CreateInstance(Type)` requires.
+
 For a `FieldInfo`, you can use `GetNullability` and `IsNullableReference` in the same way as for `PropertyInfo`.
 
 For `ParameterInfo`, you can use:
