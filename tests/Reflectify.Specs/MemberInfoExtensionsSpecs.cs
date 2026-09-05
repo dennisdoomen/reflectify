@@ -142,7 +142,7 @@ public class MemberInfoExtensionsSpecs
             var result = member.GetAttribute<MultiValuedAttribute>();
 
             // Assert
-            result.Should().NotBeNull();
+            result.Should().BeEquivalentTo(new { Tag = "First" });
         }
 
         [Fact]
@@ -160,16 +160,17 @@ public class MemberInfoExtensionsSpecs
 
         private class ClassWithMultipleAttributesOnMember
         {
-            [MultiValued]
-            [MultiValued]
+            [MultiValued("First")]
+            [MultiValued("Second")]
             public void Method()
             {
             }
         }
 
         [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
-        private sealed class MultiValuedAttribute : Attribute
+        private sealed class MultiValuedAttribute(string tag) : Attribute
         {
+            public string Tag { get; } = tag;
         }
 
         [AttributeUsage(AttributeTargets.Method)]
