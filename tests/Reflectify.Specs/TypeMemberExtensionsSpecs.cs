@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Reflection;
 using FluentAssertions;
 using JetBrains.Annotations;
 using Xunit;
@@ -10,6 +11,22 @@ namespace Reflectify.Specs;
 
 public class TypeMemberExtensionsSpecs
 {
+    public class MemberKindExtensions
+    {
+        [Theory]
+        [InlineData(MemberKind.Internal)]
+        [InlineData(MemberKind.Protected)]
+        [InlineData(MemberKind.Private)]
+        public void Non_public_visibility_kinds_map_to_non_public_binding_flags(MemberKind kind)
+        {
+            // Act
+            BindingFlags flags = kind.ToBindingFlags();
+
+            // Assert
+            flags.Should().Be(BindingFlags.NonPublic);
+        }
+    }
+
     public class GetPropertiesAndFields
     {
         [Fact]
@@ -188,6 +205,55 @@ public class TypeMemberExtensionsSpecs
         }
 
         [Fact]
+        public void Can_get_protected_and_private_properties_without_public_ones()
+        {
+            // Act
+            var properties = typeof(SuperClass).GetProperties(MemberKind.Protected | MemberKind.Private);
+
+            // Assert
+            properties.Should().BeEquivalentTo(new[]
+            {
+                new { Name = "ProtectedProperty", PropertyType = typeof(bool) },
+                new { Name = "PrivateProperty", PropertyType = typeof(bool) }
+            });
+        }
+
+        [Fact]
+        public void Can_get_properties_for_every_visibility()
+        {
+            // Act
+            var properties = typeof(SuperClass).GetProperties(
+                MemberKind.Public | MemberKind.Internal | MemberKind.Protected | MemberKind.Private);
+
+            // Assert
+            properties.Should().BeEquivalentTo(new[]
+            {
+                new { Name = "NormalProperty", PropertyType = typeof(string) },
+                new { Name = "NewProperty", PropertyType = typeof(int) },
+                new { Name = "InterfaceProperty", PropertyType = typeof(string) },
+                new { Name = "InternalProperty", PropertyType = typeof(bool) },
+                new { Name = "InternalProtectedProperty", PropertyType = typeof(bool) },
+                new { Name = "ProtectedProperty", PropertyType = typeof(bool) },
+                new { Name = "PrivateProperty", PropertyType = typeof(bool) }
+            });
+        }
+
+        [Fact]
+        public void Can_get_protected_and_private_static_properties()
+        {
+            // Act
+            var properties = typeof(SuperClass).GetProperties(
+                MemberKind.Protected | MemberKind.Private | MemberKind.Static);
+
+            // Assert
+            properties.Should().BeEquivalentTo(new[]
+            {
+                new { Name = "ProtectedStaticProperty", PropertyType = typeof(bool) },
+                new { Name = "PrivateStaticProperty", PropertyType = typeof(bool) }
+            });
+        }
+
+        [Fact]
         public void Can_get_write_only_properties()
         {
             // Act
@@ -289,6 +355,21 @@ public class TypeMemberExtensionsSpecs
                 new { Name = "PublicField", FieldType = typeof(string) },
                 new { Name = "protectedField", FieldType = typeof(string) },
                 new { Name = "privateField", FieldType = typeof(string) }
+            });
+        }
+
+        [Fact]
+        public void Can_get_protected_and_private_static_fields()
+        {
+            // Act
+            var fields = typeof(ClassWithFieldsOfEveryVisibility).GetFields(
+                MemberKind.Protected | MemberKind.Private | MemberKind.Static);
+
+            // Assert
+            fields.Should().BeEquivalentTo(new[]
+            {
+                new { Name = "protectedStaticField", FieldType = typeof(string) },
+                new { Name = "privateStaticField", FieldType = typeof(string) }
             });
         }
 
@@ -811,6 +892,31 @@ public class TypeMemberExtensionsSpecs
         }
 
         [Fact]
+        public void Can_find_a_private_field_declared_by_a_base_class()
+        {
+            // Act
+            var field = typeof(SuperClass).FindField("privateBaseField", MemberKind.Private);
+
+            // Assert
+            field.Should().NotBeNull();
+            field.Name.Should().Be("privateBaseField");
+            field.FieldType.Should().Be<string>();
+        }
+
+        [Fact]
+        public void Can_find_a_private_static_field_if_you_ask_for_it()
+        {
+            // Act
+            var field = typeof(ClassWithFieldsOfEveryVisibility)
+                .FindField("privateStaticField", MemberKind.Private | MemberKind.Static);
+
+            // Assert
+            field.Should().NotBeNull();
+            field.Name.Should().Be("privateStaticField");
+            field.FieldType.Should().Be<string>();
+        }
+
+        [Fact]
         public void Cannot_find_an_explicitly_implemented_property_if_you_dont_ask_for_that()
         {
             // Act
@@ -1107,6 +1213,10 @@ public class TypeMemberExtensionsSpecs
 
         public static bool StaticProperty { get; set; }
 
+        protected static bool ProtectedStaticProperty { get; set; }
+
+        private static bool PrivateStaticProperty { get; set; }
+
         internal bool InternalProperty { get; set; }
 
         protected internal bool InternalProtectedProperty { get; set; }
@@ -1133,6 +1243,10 @@ public class TypeMemberExtensionsSpecs
         protected string protectedField;
 
         private string privateField;
+
+        protected static string protectedStaticField;
+
+        private static string privateStaticField;
 #pragma warning restore CA1823 // Unused field
 #pragma warning restore CS0169 // Field is never used
 #pragma warning restore CS0649 // Field is never assigned to, and will always have its default value
@@ -1152,6 +1266,10 @@ public class TypeMemberExtensionsSpecs
         protected string protectedField;
 
         private string privateField;
+
+        protected static string protectedStaticField;
+
+        private static string privateStaticField;
 #pragma warning restore CA1823 // Unused field
 #pragma warning restore CS0169 // Field is never used
 #pragma warning restore CS0649 // Field is never assigned to, and will always have its default value
@@ -1167,6 +1285,14 @@ public class TypeMemberExtensionsSpecs
 
     private class BaseClass
     {
+#pragma warning disable CS0649 // Field is never assigned to, and will always have its default value
+#pragma warning disable CS0169 // Field is never used
+#pragma warning disable CA1823 // Unused field
+        private string privateBaseField;
+#pragma warning restore CA1823 // Unused field
+#pragma warning restore CS0169 // Field is never used
+#pragma warning restore CS0649 // Field is never assigned to, and will always have its default value
+
         [UsedImplicitly]
         public string NewProperty { get; set; }
     }
