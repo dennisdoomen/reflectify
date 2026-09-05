@@ -77,6 +77,9 @@ To get more metadata from a `PropertyInfo`, you can use extensions methods like:
 * `IsExplictlyImplemented`
 * `IsIndexer`
 * `HasAttribute` and `HasAttributeInHierarchy`, with an optional predicate to filter on attribute properties.
+* `GetAttribute` and `GetMatchingAttributes` to retrieve the (single) attribute(s) a member is decorated with,
+  with an optional predicate to filter on attribute properties. These do not consider the member's inheritance
+  hierarchy; use `HasAttributeInHierarchy` if you need to know whether the attribute is present anywhere in it.
 * `IsPublic`, `IsInternal` or `IsAbstract` to check either the getter or setters matches the criteria
 * `IsInitOnly` to detect C# 9 init-only properties, `IsRequired` to detect the C# 11 `required` modifier,
   and `IsWritable` to see if a property can be assigned outside of an object initializer or constructor
@@ -90,13 +93,15 @@ For a `FieldInfo`, you can use `GetNullability` and `IsNullableReference` in the
 For `ParameterInfo`, you can use:
 
 * `HasAttribute` and `HasAttributeInHierarchy` to check whether a parameter is decorated with a specific attribute, with an optional predicate to filter on attribute properties.
+* `GetAttribute` and `GetMatchingAttributes` to retrieve the (single) attribute(s) a parameter is decorated with,
+  with an optional predicate to filter on attribute properties.
 * `GetNullability` and `IsNullableReference` to determine the nullable reference type annotation of the parameter.
 
 Other extension methods act on `Type` directly and include:
 
 * `IsDerivedFromOpenGeneric` and `GetClosedGenericInterfaces`
-* Various `HasAttribute`, `HasAttributeInHierarchy` and `GetMatchingAttributes` overloads, with and without additional
-  filtering.
+* Various `HasAttribute`, `HasAttributeInHierarchy`, `GetAttribute` and `GetMatchingAttributes` overloads, with and
+  without additional filtering.
 * `IsObsolete` to detect obsolete types and members, including members declared on obsolete types.
 * `OverridesEquals` to determine if a type implements value semantics
 * `IsSameOrInherits` to see if a type is the same as or derives from another (open-generic) type

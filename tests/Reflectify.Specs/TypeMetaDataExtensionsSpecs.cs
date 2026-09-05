@@ -305,6 +305,51 @@ public class TypeMetaDataExtensionsSpecs
         }
     }
 
+    public class GetAttribute
+    {
+        [Fact]
+        public void Returns_null_when_no_matching_attribute_exists()
+        {
+            // Act
+            var result = typeof(SomeOtherClass).GetAttribute<InheritableAttribute>();
+
+            // Assert
+            result.Should().BeNull();
+        }
+
+        [Fact]
+        public void Returns_the_single_matching_attribute()
+        {
+            // Act
+            var result = typeof(ClassWithAttribute).GetAttribute<InheritableAttribute>();
+
+            // Assert
+            result.Should().NotBeNull();
+            result.Message.Should().Be("SomeMessage");
+        }
+
+        [Fact]
+        public void Returns_the_first_attribute_when_multiple_are_present()
+        {
+            // Act
+            var result = typeof(ClassWithInheritableAndParameterizedAttribute).GetAttribute<InheritableAttribute>();
+
+            // Assert
+            result.Should().BeEquivalentTo(new { Message = "FirstAttribute" });
+        }
+
+        [Fact]
+        public void Considers_attributes_declared_on_a_base_class()
+        {
+            // Act
+            var result = typeof(ClassDerivedFromOneWithInheritableAndParameterizedAttribute)
+                .GetAttribute<InheritableAttribute>();
+            // Assert
+            result.Should().NotBeNull();
+            result.Should().NotBeNull();
+        }
+    }
+
     public class GetMatchingAttributes
     {
         [Fact]
