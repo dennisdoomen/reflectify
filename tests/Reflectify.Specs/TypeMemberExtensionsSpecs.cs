@@ -722,6 +722,30 @@ public class TypeMemberExtensionsSpecs
         }
 
         [Fact]
+        public void A_method_matching_the_predicate_exists()
+        {
+            // Act / Assert
+            typeof(ClassWithMethods).HasMethod(method => method.Name == nameof(ClassWithMethods.StaticMethod)).Should().BeTrue();
+        }
+
+        [Fact]
+        public void A_method_not_matching_the_predicate_does_not_exist()
+        {
+            // Act / Assert
+            typeof(ClassWithMethods).HasMethod(method => method.Name == "NonExistingMethod").Should().BeFalse();
+        }
+
+        [Fact]
+        public void A_null_method_predicate_is_rejected()
+        {
+            // Act
+            var act = () => typeof(ClassWithMethods).HasMethod(null);
+
+            // Assert
+            act.Should().Throw<ArgumentNullException>();
+        }
+
+        [Fact]
         public void The_name_of_the_method_must_match()
         {
             // Act

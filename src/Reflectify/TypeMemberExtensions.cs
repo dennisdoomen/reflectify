@@ -152,6 +152,21 @@ internal static class TypeMemberExtensions
         return type.FindMethod(methodName, memberKind, parameterTypes) is not null;
     }
 
+    /// <summary>
+    /// Determines whether the type has a method that matches the specified predicate.
+    /// </summary>
+    public static bool HasMethod(this Type type, Func<MethodInfo, bool> predicate)
+    {
+        if (predicate is null)
+        {
+            throw new ArgumentNullException(nameof(predicate));
+        }
+
+        const BindingFlags flags = BindingFlags.Instance | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic;
+
+        return type.GetMethods(flags).Any(predicate);
+    }
+
     public static PropertyInfo FindIndexer(this Type type, MemberKind memberKind, params Type[] parameterTypes)
     {
         var flags = memberKind.ToBindingFlags() | BindingFlags.Instance | BindingFlags.Static;
