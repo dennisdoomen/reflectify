@@ -76,7 +76,7 @@ To get more metadata from a `PropertyInfo`, you can use extensions methods like:
 
 * `IsExplictlyImplemented`
 * `IsIndexer`
-* `HasAttribute` and `HasAttributeInHierarchy`
+* `HasAttribute` and `HasAttributeInHierarchy`, with an optional predicate to filter on attribute properties.
 * `IsPublic`, `IsInternal` or `IsAbstract` to check either the getter or setters matches the criteria
 * `IsInitOnly` to detect C# 9 init-only properties, `IsRequired` to detect the C# 11 `required` modifier,
   and `IsWritable` to see if a property can be assigned outside of an object initializer or constructor
