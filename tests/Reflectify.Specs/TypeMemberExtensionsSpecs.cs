@@ -1118,6 +1118,81 @@ public class TypeMemberExtensionsSpecs
             act.Should().Throw<ArgumentException>().WithMessage("*method name*");
         }
 
+        [Fact]
+        public void An_internal_method_declared_on_a_base_type_is_found()
+        {
+            // Act
+            var method = typeof(SubClassHidingABaseMethod).FindMethod("InternalBaseMethod", MemberKind.Internal);
+
+            // Assert
+            method.Should().NotBeNull();
+            method.DeclaringType.Should().Be(typeof(BaseClassWithAHiddenMethod));
+        }
+
+        [Fact]
+        public void A_protected_internal_method_declared_on_a_base_type_is_found()
+        {
+            // Act / Assert
+            typeof(SubClassHidingABaseMethod)
+                .HasMethod("ProtectedInternalBaseMethod", MemberKind.Internal)
+                .Should().BeTrue();
+        }
+
+        [Fact]
+        public void A_private_method_declared_on_a_base_type_is_out_of_reach()
+        {
+            // Act
+            var method = typeof(SubClassHidingABaseMethod).FindMethod("PrivateBaseMethod", MemberKind.Internal);
+
+            // Assert
+            method.Should().BeNull();
+        }
+
+        [Fact]
+        public void A_method_hidden_by_a_subclass_resolves_to_the_most_derived_one()
+        {
+            // Act
+            var method = typeof(SubClassHidingABaseMethod).FindMethod("HiddenMethod", MemberKind.Public);
+
+            // Assert
+            method.Should().NotBeNull();
+            method.DeclaringType.Should().Be(typeof(SubClassHidingABaseMethod));
+        }
+
+        [Fact]
+        public void A_property_accessor_does_not_count_as_a_method()
+        {
+            // Act
+            var method = typeof(SubClassHidingABaseMethod).FindMethod("get_Foo", MemberKind.Public);
+
+            // Assert
+            method.Should().BeNull();
+        }
+
+        private class BaseClassWithAHiddenMethod
+        {
+            [UsedImplicitly]
+            public string HiddenMethod() => "base";
+
+            [UsedImplicitly]
+            internal bool InternalBaseMethod() => true;
+
+            [UsedImplicitly]
+            protected internal bool ProtectedInternalBaseMethod() => true;
+
+            [UsedImplicitly]
+            private bool PrivateBaseMethod() => true;
+        }
+
+        private sealed class SubClassHidingABaseMethod : BaseClassWithAHiddenMethod
+        {
+            [UsedImplicitly]
+            public new string HiddenMethod() => "sub";
+
+            [UsedImplicitly]
+            public int Foo { get; set; }
+        }
+
         private class ClassWithMethods
         {
             [UsedImplicitly]
@@ -1254,6 +1329,39 @@ public class TypeMemberExtensionsSpecs
         {
             // Act
             var methods = typeof(SuperClassWithMethods).GetMethods(MemberKind.None);
+
+            // Assert
+            methods.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void Asking_for_instance_methods_leaves_out_the_static_ones()
+        {
+            // Act
+            var methods = typeof(SuperClassWithMethods).GetMethods(MemberKind.Public | MemberKind.Internal);
+
+            // Assert
+            methods.Should().NotContain(m => m.IsStatic);
+            methods.Should().Contain(m => m.Name == "NormalMethod");
+        }
+
+        [Fact]
+        public void Asking_for_static_methods_leaves_out_the_instance_ones()
+        {
+            // Act
+            var methods = typeof(SuperClassWithMethods).GetMethods(
+                MemberKind.Public | MemberKind.Internal | MemberKind.Static);
+
+            // Assert
+            methods.Should().OnlyContain(m => m.IsStatic);
+            methods.Should().Contain(m => m.Name == "StaticMethod");
+        }
+
+        [Fact]
+        public void Static_on_its_own_says_nothing_about_visibility_so_nothing_matches()
+        {
+            // Act
+            var methods = typeof(SuperClassWithMethods).GetMethods(MemberKind.Static);
 
             // Assert
             methods.Should().BeEmpty();
