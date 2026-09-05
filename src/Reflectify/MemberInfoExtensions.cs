@@ -11,6 +11,15 @@ using System.Reflection;
 
 namespace Reflectify;
 
+/// <summary>
+/// Specifies whether obsolescence should be evaluated only on the member itself or also on its declaring type.
+/// </summary>
+public enum ObsoleteMemberFilter
+{
+    MemberOnly,
+    IncludeDeclaringType,
+}
+
 #if REFLECTIFY_COMPILE
 public static class MemberInfoExtensions
 #else
@@ -52,16 +61,25 @@ internal static class MemberInfoExtensions
     }
 
     /// <summary>
-    /// Returns <see langword="true" /> if the member or, by default, its declaring type is marked as obsolete.
+    /// Returns <see langword="true" /> if the member is marked as obsolete.
     /// </summary>
-    /// <param name="member">The member to inspect.</param>
-    /// <param name="includeDeclaringType">
-    /// Indicates whether obsolescence of the declaring type should also mark the member as obsolete.
-    /// </param>
-    public static bool IsObsolete(this MemberInfo member, bool includeDeclaringType = true)
+    public static bool IsObsolete(this MemberInfo member)
     {
         return member.HasAttribute<ObsoleteAttribute>() ||
-               (includeDeclaringType && member.DeclaringType?.IsObsolete() == true);
+               member.DeclaringType?.IsObsolete() == true;
+    }
+
+    /// <summary>
+    /// Returns <see langword="true" /> if the member is obsolete according to the selected scope.
+    /// </summary>
+    public static bool IsObsolete(this MemberInfo member, ObsoleteMemberFilter filter)
+    {
+        if (filter == ObsoleteMemberFilter.MemberOnly)
+        {
+            return member.HasAttribute<ObsoleteAttribute>();
+        }
+
+        return member.IsObsolete();
     }
 
     /// <summary>

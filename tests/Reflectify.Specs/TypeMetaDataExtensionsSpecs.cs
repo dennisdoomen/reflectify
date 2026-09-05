@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using FluentAssertions;
 using Xunit;
 
+#pragma warning disable CS0612 // Type or member is obsolete
 #pragma warning disable CS0618 // Type or member is obsolete
 
 namespace Reflectify.Specs;
@@ -277,22 +278,20 @@ public class TypeMetaDataExtensionsSpecs
         public void Returns_the_obsolescence_message()
         {
             // Act
-            bool result = typeof(ObsoleteType).IsObsolete(out string message);
+            string message = typeof(ObsoleteType).GetObsoleteMessage();
 
             // Assert
-            result.Should().BeTrue();
             message.Should().Be("Use another type");
         }
 
         [Fact]
-        public void Returns_an_empty_message_when_the_obsolete_type_has_no_message()
+        public void Returns_no_message_when_the_obsolete_type_has_no_message()
         {
             // Act
-            bool result = typeof(ObsoleteTypeWithoutMessage).IsObsolete(out string message);
+            string message = typeof(ObsoleteTypeWithoutMessage).GetObsoleteMessage();
 
             // Assert
-            result.Should().BeTrue();
-            message.Should().BeEmpty();
+            message.Should().BeNull();
         }
 
         [Obsolete("Use another type")]

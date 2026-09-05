@@ -134,17 +134,15 @@ internal static class TypeMetaDataExtensions
     /// </summary>
     public static bool IsObsolete(this Type type)
     {
-        return type.HasAttribute<ObsoleteAttribute>();
+        return type.GetCustomAttributes<ObsoleteAttribute>(inherit: false).Any();
     }
 
     /// <summary>
-    /// Returns <see langword="true" /> if the type is marked as obsolete and provides its obsolescence message.
+    /// Returns the reason text associated with the obsolete type, or <see langword="null" /> when no message was supplied.
     /// </summary>
-    public static bool IsObsolete(this Type type, out string message)
+    public static string GetObsoleteMessage(this Type type)
     {
-        ObsoleteAttribute attribute = type.GetCustomAttributes<ObsoleteAttribute>(inherit: false).SingleOrDefault();
-        message = attribute?.Message ?? string.Empty;
-        return attribute is not null;
+        return type.GetCustomAttributes<ObsoleteAttribute>(inherit: false).FirstOrDefault()?.Message;
     }
 
     /// <summary>

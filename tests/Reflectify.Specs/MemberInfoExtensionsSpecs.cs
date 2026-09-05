@@ -3,6 +3,7 @@ using System.Reflection;
 using FluentAssertions;
 using Xunit;
 
+#pragma warning disable CS0612 // Type or member is obsolete
 #pragma warning disable CS0649 // Field is never assigned to, and will always have its default value
 
 namespace Reflectify.Specs;
@@ -135,7 +136,7 @@ public class MemberInfoExtensionsSpecs
             MemberInfo member = typeof(ObsoleteClass).GetMethod("Method");
 
             // Act
-            bool result = member.IsObsolete(includeDeclaringType: false);
+            bool result = member.IsObsolete(ObsoleteMemberFilter.MemberOnly);
 
             // Assert
             result.Should().BeFalse();
