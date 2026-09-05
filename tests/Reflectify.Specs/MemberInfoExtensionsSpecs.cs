@@ -67,7 +67,17 @@ public class MemberInfoExtensionsSpecs
             member.HasAttribute<InheritableAttribute>(_ => true).Should().BeFalse();
         }
 
-        [AttributeUsage(AttributeTargets.Method, Inherited = true)]
+        [Fact]
+        public void Does_not_find_an_inheritable_attribute_on_an_overridden_property_using_a_predicate()
+        {
+            // Arrange
+            var member = typeof(DerivedClass).GetProperty("Property");
+
+            // Act / Assert
+            member.HasAttribute<InheritableAttribute>(_ => true).Should().BeFalse();
+        }
+
+        [AttributeUsage(AttributeTargets.Method | AttributeTargets.Property, Inherited = true)]
         private sealed class InheritableAttribute : Attribute
         {
         }
@@ -78,6 +88,9 @@ public class MemberInfoExtensionsSpecs
             public virtual void Method()
             {
             }
+
+            [Inheritable]
+            public virtual string Property => "";
         }
 
         private class DerivedClass : BaseClass
@@ -85,6 +98,8 @@ public class MemberInfoExtensionsSpecs
             public override void Method()
             {
             }
+
+            public override string Property => "";
         }
     }
 
@@ -118,6 +133,17 @@ public class MemberInfoExtensionsSpecs
 
             // Act / Assert
             member.HasAttributeInHierarchy<InheritableAttribute>(_ => true).Should().BeTrue();
+        }
+
+        [Fact]
+        public void Finds_an_attribute_on_a_member_using_a_specific_predicate()
+        {
+            // Arrange
+            var member = typeof(ClassWithAttributedMember).GetMethod("Method");
+
+            // Act / Assert
+            member.HasAttributeInHierarchy<ObsoleteAttribute>(attribute =>
+                attribute.Message!.StartsWith("Specific")).Should().BeTrue();
         }
 
         [Fact]
