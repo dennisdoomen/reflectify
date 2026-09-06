@@ -1325,6 +1325,30 @@ public class TypeMemberExtensionsSpecs
                     m.Name == "ExplicitlyImplementedMethod" && m.DeclaringType == typeof(ClassWithExplicitAndNormalMethod));
         }
 
+        [Fact]
+        public void A_normal_method_wins_from_an_explicitly_implemented_one_in_a_base_class()
+        {
+            // Act
+            var methods = typeof(DerivedClassWithNormalMethod).GetMethods(
+                MemberKind.Public | MemberKind.ExplicitlyImplemented);
+
+            // Assert
+            methods.Should().ContainSingle()
+                .Which.DeclaringType.Should().Be(typeof(DerivedClassWithNormalMethod));
+        }
+
+        [Fact]
+        public void A_normal_method_in_a_base_class_wins_from_an_explicitly_implemented_one()
+        {
+            // Act
+            var methods = typeof(DerivedClassWithExplicitMethod).GetMethods(
+                MemberKind.Public | MemberKind.ExplicitlyImplemented);
+
+            // Assert
+            methods.Should().ContainSingle()
+                .Which.DeclaringType.Should().Be(typeof(BaseClassWithNormalMethod));
+        }
+
 #if NETCOREAPP3_0_OR_GREATER
         [Fact]
         public void Can_get_default_interface_methods_only()
@@ -1551,6 +1575,28 @@ public class TypeMemberExtensionsSpecs
 
             [UsedImplicitly]
             public string ExplicitlyImplementedMethod() => "normal";
+        }
+
+        private class BaseClassWithExplicitMethod : IInterfaceWithSingleMethod
+        {
+            string IInterfaceWithSingleMethod.ExplicitlyImplementedMethod() => "explicit";
+        }
+
+        private sealed class DerivedClassWithNormalMethod : BaseClassWithExplicitMethod
+        {
+            [UsedImplicitly]
+            public string ExplicitlyImplementedMethod() => "normal";
+        }
+
+        private class BaseClassWithNormalMethod
+        {
+            [UsedImplicitly]
+            public string ExplicitlyImplementedMethod() => "normal";
+        }
+
+        private sealed class DerivedClassWithExplicitMethod : BaseClassWithNormalMethod, IInterfaceWithSingleMethod
+        {
+            string IInterfaceWithSingleMethod.ExplicitlyImplementedMethod() => "explicit";
         }
 
         private sealed class ClassWithMethodOverloads

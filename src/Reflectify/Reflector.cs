@@ -583,16 +583,8 @@ internal sealed class Reflector(Type typeToReflect, MemberKind kind)
                 // Normal methods have priority over explicitly implemented methods
                 kindMap[signature] = kind;
 
-                for (int i = 0; i < methodsWithSignature.Count; i++)
-                {
-                    if (methodsWithSignature[i].Signature == signature)
-                    {
-                        methodsWithSignature[i] = (signature, method);
-                        return;
-                    }
-                }
-
-                methodsWithSignature.Add((signature, method));
+                int index = methodsWithSignature.FindIndex(methodWithSignature => methodWithSignature.Signature == signature);
+                methodsWithSignature[index] = (signature, method);
             }
             else
             {
