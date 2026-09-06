@@ -169,6 +169,38 @@ internal static class TypeMemberExtensions
         return type.IsValueType || type.FindConstructor(MemberKind.Public) is not null;
     }
 
+    /// <summary>
+    /// Gets the public, internal, protected, private, explicitly implemented and/or default interface methods of
+    /// a type hierarchy.
+    /// </summary>
+    /// <param name="type">The type to reflect.</param>
+    /// <param name="kind">The kind of methods to include in the response.</param>
+    /// <remarks>
+    /// <para>
+    /// This walks the type hierarchy the same way <see cref="GetProperties"/>, <see cref="GetFields"/> and
+    /// <see cref="GetEvents"/> do, so <see cref="MemberKind.Static"/> selects either static or instance methods
+    /// (never both). Because each type in the hierarchy is inspected separately, asking for
+    /// <see cref="MemberKind.Private"/> also returns private methods declared on base types, which a plain
+    /// <see cref="Type.GetMethods(BindingFlags)"/> call never does.
+    /// </para>
+    /// <para>
+    /// Property and event accessors, indexers and operators are compiler-generated and always have
+    /// <see cref="MethodBase.IsSpecialName"/> set to <see langword="true" />. Those are excluded so this method
+    /// only returns the methods a caller would normally write and call explicitly.
+    /// </para>
+    /// <para>
+    /// When the same method appears more than once in the hierarchy - because it is overridden or hidden with
+    /// <see langword="new" /> - only the most derived one is returned. Overloads (methods with the same name but
+    /// a different parameter list) are all kept, and normal methods take priority over explicitly implemented
+    /// or default interface methods with the same signature, mirroring the rules already used by
+    /// <see cref="GetProperties"/>.
+    /// </para>
+    /// </remarks>
+    public static MethodInfo[] GetMethods(this Type type, MemberKind kind)
+    {
+        return GetFor(type, kind).Methods;
+    }
+
     private static Reflector GetFor(Type typeToReflect, MemberKind kind)
     {
         return ReflectorCache.GetOrAdd((typeToReflect, kind),
@@ -179,7 +211,9 @@ internal static class TypeMemberExtensions
     /// Finds a method by its name, parameter types and visibility. Returns <see langword="null" /> if no such method exists.
     /// </summary>
     /// <remarks>
-    /// If you don't specify any parameter types, the method will be found by its name only.
+    /// If you don't specify any parameter types, the method will be found by its name only. This uses the same
+    /// hierarchy walk as <see cref="GetMethods"/>, so <paramref name="kind"/> must include <see cref="MemberKind.Static"/>
+    /// to find a static method; instance methods are matched otherwise.
     /// </remarks>
 #pragma warning disable AV1561
     public static MethodInfo FindMethod(this Type type, string methodName, MemberKind kind, params Type[] parameterTypes)
@@ -190,10 +224,8 @@ internal static class TypeMemberExtensions
             throw new ArgumentException("The method name cannot be null or empty", nameof(methodName));
         }
 
-        var flags = kind.ToBindingFlags() | BindingFlags.Instance | BindingFlags.Static;
-
         return type
-            .GetMethods(flags)
+            .GetMethods(kind)
             .SingleOrDefault(m => m.Name == methodName && HasSameParameters(parameterTypes, m));
     }
 
