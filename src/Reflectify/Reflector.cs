@@ -93,7 +93,8 @@ internal sealed class Reflector(Type typeToReflect, MemberKind kind)
 
     private static void AddNormalProperties(MemberKind kind, PropertyInfo[] allProperties, OrderedPropertyCollection selectedProperties)
     {
-        if ((kind & (MemberKind.Public | MemberKind.Internal | MemberKind.ExplicitlyImplemented)) != MemberKind.None)
+        if ((kind & (MemberKind.Public | MemberKind.Internal | MemberKind.Protected | MemberKind.Private |
+                MemberKind.ExplicitlyImplemented)) != MemberKind.None)
         {
             foreach (var property in allProperties)
             {
@@ -108,7 +109,9 @@ internal sealed class Reflector(Type typeToReflect, MemberKind kind)
     private static bool HasVisibility(MemberKind kind, PropertyInfo prop)
     {
         return ((kind & MemberKind.Public) != MemberKind.None && prop.IsPublic()) ||
-               ((kind & MemberKind.Internal) != MemberKind.None && prop.IsInternal());
+               ((kind & MemberKind.Internal) != MemberKind.None && prop.IsInternal()) ||
+               ((kind & MemberKind.Protected) != MemberKind.None && prop.IsProtected()) ||
+               ((kind & MemberKind.Private) != MemberKind.None && prop.IsPrivate());
     }
 
     private static void AddExplicitlyImplementedProperties(MemberKind kind, PropertyInfo[] allProperties, OrderedPropertyCollection selectedProperties)
@@ -176,7 +179,9 @@ internal sealed class Reflector(Type typeToReflect, MemberKind kind)
     private static bool HasVisibility(MemberKind kind, FieldInfo field)
     {
         return ((kind & MemberKind.Public) != MemberKind.None && field.IsPublic) ||
-               ((kind & MemberKind.Internal) != MemberKind.None && (field.IsAssembly || field.IsFamilyOrAssembly));
+               ((kind & MemberKind.Internal) != MemberKind.None && (field.IsAssembly || field.IsFamilyOrAssembly)) ||
+               ((kind & MemberKind.Protected) != MemberKind.None && field.IsFamily) ||
+               ((kind & MemberKind.Private) != MemberKind.None && field.IsPrivate);
     }
 
     private sealed class OrderedPropertyCollection

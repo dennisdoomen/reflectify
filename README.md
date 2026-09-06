@@ -66,7 +66,7 @@ var properties = typeof(SuperClass).GetProperties(
     MemberKind.Public | MemberKind.ExplicitlyImplemented | MemberKind.DefaultInterfaceProperties);
 ```
 
-You can take any of the options `Public`, `Internal`, `Static`, `ExplictlyImplemented` and `DefaultInterfaceProperties`.
+You can take any of the options `Public`, `Internal`, `Protected`, `Private`, `Static`, `ExplictlyImplemented` and `DefaultInterfaceProperties`.
 
 If you need the fields, use `GetFields` (which obviously cannot be explicitly implemented, nor be part of interfaces),
 and if you need the members, use `GetMembers`. You can also request individual members by name, like
@@ -80,7 +80,7 @@ To get more metadata from a `PropertyInfo`, you can use extensions methods like:
 * `GetAttribute` and `GetMatchingAttributes` to retrieve the (single) attribute(s) a member is decorated with,
   with an optional predicate to filter on attribute properties. These do not consider the member's inheritance
   hierarchy; use `HasAttributeInHierarchy` if you need to know whether the attribute is present anywhere in it.
-* `IsPublic`, `IsInternal` or `IsAbstract` to check either the getter or setters matches the criteria
+* `IsPublic`, `IsInternal`, `IsProtected`, `IsPrivate` or `IsAbstract` to check either the getter or setters matches the criteria
 * `IsInitOnly` to detect C# 9 init-only properties, `IsRequired` to detect the C# 11 `required` modifier,
   and `IsWritable` to see if a property can be assigned outside of an object initializer or constructor
 * `GetNullability` and `IsNullableReference` to determine the nullable reference type annotation of the property

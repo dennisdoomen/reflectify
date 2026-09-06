@@ -1,6 +1,8 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.Linq;
+using System.Reflection;
 using FluentAssertions;
 using JetBrains.Annotations;
 using Xunit;
@@ -9,6 +11,22 @@ namespace Reflectify.Specs;
 
 public class TypeMemberExtensionsSpecs
 {
+    public class MemberKindExtensions
+    {
+        [Theory]
+        [InlineData(MemberKind.Internal)]
+        [InlineData(MemberKind.Protected)]
+        [InlineData(MemberKind.Private)]
+        public void Non_public_visibility_kinds_map_to_non_public_binding_flags(MemberKind kind)
+        {
+            // Act
+            BindingFlags flags = kind.ToBindingFlags();
+
+            // Assert
+            flags.Should().Be(BindingFlags.NonPublic);
+        }
+    }
+
     public class GetPropertiesAndFields
     {
         [Fact]
@@ -143,6 +161,99 @@ public class TypeMemberExtensionsSpecs
         }
 
         [Fact]
+        public void Can_get_protected_properties()
+        {
+            // Act
+            var properties = typeof(SuperClass).GetProperties(MemberKind.Protected);
+
+            // Assert
+            properties.Should().BeEquivalentTo(new[]
+            {
+                new { Name = "ProtectedProperty", PropertyType = typeof(bool) }
+            });
+        }
+
+        [Fact]
+        public void Can_get_private_properties()
+        {
+            // Act
+            var properties = typeof(SuperClass).GetProperties(MemberKind.Private);
+
+            // Assert
+            properties.Should().BeEquivalentTo(new[]
+            {
+                new { Name = "PrivateProperty", PropertyType = typeof(bool) }
+            });
+        }
+
+        [Fact]
+        public void Can_combine_protected_and_private_properties_with_public()
+        {
+            // Act
+            var properties = typeof(SuperClass).GetProperties(
+                MemberKind.Public | MemberKind.Protected | MemberKind.Private);
+
+            // Assert
+            properties.Should().BeEquivalentTo(new[]
+            {
+                new { Name = "NormalProperty", PropertyType = typeof(string) },
+                new { Name = "NewProperty", PropertyType = typeof(int) },
+                new { Name = "InterfaceProperty", PropertyType = typeof(string) },
+                new { Name = "ProtectedProperty", PropertyType = typeof(bool) },
+                new { Name = "PrivateProperty", PropertyType = typeof(bool) }
+            });
+        }
+
+        [Fact]
+        public void Can_get_protected_and_private_properties_without_public_ones()
+        {
+            // Act
+            var properties = typeof(SuperClass).GetProperties(MemberKind.Protected | MemberKind.Private);
+
+            // Assert
+            properties.Should().BeEquivalentTo(new[]
+            {
+                new { Name = "ProtectedProperty", PropertyType = typeof(bool) },
+                new { Name = "PrivateProperty", PropertyType = typeof(bool) }
+            });
+        }
+
+        [Fact]
+        public void Can_get_properties_for_every_visibility()
+        {
+            // Act
+            var properties = typeof(SuperClass).GetProperties(
+                MemberKind.Public | MemberKind.Internal | MemberKind.Protected | MemberKind.Private);
+
+            // Assert
+            properties.Should().BeEquivalentTo(new[]
+            {
+                new { Name = "NormalProperty", PropertyType = typeof(string) },
+                new { Name = "NewProperty", PropertyType = typeof(int) },
+                new { Name = "InterfaceProperty", PropertyType = typeof(string) },
+                new { Name = "InternalProperty", PropertyType = typeof(bool) },
+                new { Name = "InternalProtectedProperty", PropertyType = typeof(bool) },
+                new { Name = "ProtectedProperty", PropertyType = typeof(bool) },
+                new { Name = "PrivateProperty", PropertyType = typeof(bool) }
+            });
+        }
+
+        [Fact]
+        public void Can_get_protected_and_private_static_properties()
+        {
+            // Act
+            var properties = typeof(SuperClass).GetProperties(
+                MemberKind.Protected | MemberKind.Private | MemberKind.Static);
+
+            // Assert
+            properties.Should().BeEquivalentTo(new[]
+            {
+                new { Name = "ProtectedStaticProperty", PropertyType = typeof(bool) },
+                new { Name = "PrivateStaticProperty", PropertyType = typeof(bool) }
+            });
+        }
+
+        [Fact]
         public void Can_get_write_only_properties()
         {
             // Act
@@ -203,6 +314,74 @@ public class TypeMemberExtensionsSpecs
                 new { Name = "InternalField", FieldType = typeof(string) },
                 new { Name = "ProtectedInternalField", FieldType = typeof(string) }
             });
+        }
+
+        [Fact]
+        public void Can_find_protected_fields()
+        {
+            // Act
+            var fields = typeof(SuperClass).GetFields(MemberKind.Protected);
+
+            // Assert
+            fields.Should().BeEquivalentTo(new[]
+            {
+                new { Name = "protectedField", FieldType = typeof(string) }
+            });
+        }
+
+        [Fact]
+        public void Can_find_private_fields()
+        {
+            // Act
+            var fields = typeof(ClassWithFieldsOfEveryVisibility).GetFields(MemberKind.Private);
+
+            // Assert
+            fields.Should().BeEquivalentTo(new[]
+            {
+                new { Name = "privateField", FieldType = typeof(string) }
+            });
+        }
+
+        [Fact]
+        public void Can_combine_protected_and_private_fields_with_public()
+        {
+            // Act
+            var fields = typeof(ClassWithFieldsOfEveryVisibility).GetFields(
+                MemberKind.Public | MemberKind.Protected | MemberKind.Private);
+
+            // Assert
+            fields.Should().BeEquivalentTo(new[]
+            {
+                new { Name = "PublicField", FieldType = typeof(string) },
+                new { Name = "protectedField", FieldType = typeof(string) },
+                new { Name = "privateField", FieldType = typeof(string) }
+            });
+        }
+
+        [Fact]
+        public void Can_get_protected_and_private_static_fields()
+        {
+            // Act
+            var fields = typeof(ClassWithFieldsOfEveryVisibility).GetFields(
+                MemberKind.Protected | MemberKind.Private | MemberKind.Static);
+
+            // Assert
+            fields.Should().BeEquivalentTo(new[]
+            {
+                new { Name = "protectedStaticField", FieldType = typeof(string) },
+                new { Name = "privateStaticField", FieldType = typeof(string) }
+            });
+        }
+
+        [Fact]
+        public void Requesting_private_fields_also_surfaces_compiler_generated_property_backing_fields()
+        {
+            // Act
+            var fields = typeof(SuperClass).GetFields(MemberKind.Private);
+
+            // Assert
+            fields.Select(f => f.Name).Should().Contain(name => name.Contains("k__BackingField"),
+                "auto-implemented properties store their state in a compiler-generated private field");
         }
 
         [Fact]
@@ -270,6 +449,36 @@ public class TypeMemberExtensionsSpecs
                 new { Name = "InternalProtectedProperty" },
                 new { Name = "InternalField" },
                 new { Name = "ProtectedInternalField" },
+            ]);
+        }
+
+        [Fact]
+        public void Can_find_all_protected_and_private_members()
+        {
+            // Act
+            var members = typeof(ClassWithFieldsOfEveryVisibility).GetMembers(MemberKind.Protected | MemberKind.Private);
+
+            // Assert
+            members.Should().BeEquivalentTo([
+                new { Name = "protectedField" },
+                new { Name = "privateField" },
+            ]);
+        }
+
+        [Fact]
+        public void Can_find_every_member_regardless_of_visibility()
+        {
+            // Act
+            var members = typeof(ClassWithFieldsOfEveryVisibility).GetMembers(
+                MemberKind.Public | MemberKind.Internal | MemberKind.Protected | MemberKind.Private);
+
+            // Assert
+            members.Should().BeEquivalentTo([
+                new { Name = "PublicField" },
+                new { Name = "InternalField" },
+                new { Name = "ProtectedInternalField" },
+                new { Name = "protectedField" },
+                new { Name = "privateField" },
             ]);
         }
 
@@ -383,6 +592,56 @@ public class TypeMemberExtensionsSpecs
 
             // Assert
             property.Should().NotBeNull().And.Return<bool>();
+        }
+
+        [Fact]
+        public void Cannot_find_a_protected_property_if_you_ask_for_public_ones()
+        {
+            // Act
+            var property = typeof(SuperClass).FindProperty("ProtectedProperty", MemberKind.Public);
+
+            // Assert
+            property.Should().BeNull();
+        }
+
+        [Fact]
+        public void Can_find_a_protected_property_if_you_ask_for_them()
+        {
+            // Act
+            var property = typeof(SuperClass).FindProperty("ProtectedProperty", MemberKind.Protected);
+
+            // Assert
+            property.Should().NotBeNull().And.Return<bool>();
+        }
+
+        [Fact]
+        public void Cannot_find_a_private_property_if_you_ask_for_public_ones()
+        {
+            // Act
+            var property = typeof(SuperClass).FindProperty("PrivateProperty", MemberKind.Public);
+
+            // Assert
+            property.Should().BeNull();
+        }
+
+        [Fact]
+        public void Can_find_a_private_property_if_you_ask_for_them()
+        {
+            // Act
+            var property = typeof(SuperClass).FindProperty("PrivateProperty", MemberKind.Private);
+
+            // Assert
+            property.Should().NotBeNull().And.Return<bool>();
+        }
+
+        [Fact]
+        public void Cannot_find_a_protected_property_if_you_only_ask_for_private_ones()
+        {
+            // Act
+            var property = typeof(SuperClass).FindProperty("ProtectedProperty", MemberKind.Private);
+
+            // Assert
+            property.Should().BeNull();
         }
 
         [Fact]
@@ -585,6 +844,75 @@ public class TypeMemberExtensionsSpecs
             // Assert
             field.Should().NotBeNull();
             field.Name.Should().Be("ProtectedInternalField");
+            field.FieldType.Should().Be<string>();
+        }
+
+        [Fact]
+        public void Cannot_find_a_protected_field_if_you_ask_for_public_ones()
+        {
+            // Act
+            var field = typeof(SuperClass).FindField("protectedField", MemberKind.Public);
+
+            // Assert
+            field.Should().BeNull();
+        }
+
+        [Fact]
+        public void Can_find_a_protected_field_if_you_ask_for_them()
+        {
+            // Act
+            var field = typeof(SuperClass).FindField("protectedField", MemberKind.Protected);
+
+            // Assert
+            field.Should().NotBeNull();
+            field.Name.Should().Be("protectedField");
+            field.FieldType.Should().Be<string>();
+        }
+
+        [Fact]
+        public void Cannot_find_a_private_field_if_you_ask_for_public_ones()
+        {
+            // Act
+            var field = typeof(SuperClass).FindField("privateField", MemberKind.Public);
+
+            // Assert
+            field.Should().BeNull();
+        }
+
+        [Fact]
+        public void Can_find_a_private_field_if_you_ask_for_them()
+        {
+            // Act
+            var field = typeof(SuperClass).FindField("privateField", MemberKind.Private);
+
+            // Assert
+            field.Should().NotBeNull();
+            field.Name.Should().Be("privateField");
+            field.FieldType.Should().Be<string>();
+        }
+
+        [Fact]
+        public void Can_find_a_private_field_declared_by_a_base_class()
+        {
+            // Act
+            var field = typeof(SuperClass).FindField("privateBaseField", MemberKind.Private);
+
+            // Assert
+            field.Should().NotBeNull();
+            field.Name.Should().Be("privateBaseField");
+            field.FieldType.Should().Be<string>();
+        }
+
+        [Fact]
+        public void Can_find_a_private_static_field_if_you_ask_for_it()
+        {
+            // Act
+            var field = typeof(ClassWithFieldsOfEveryVisibility)
+                .FindField("privateStaticField", MemberKind.Private | MemberKind.Static);
+
+            // Assert
+            field.Should().NotBeNull();
+            field.Name.Should().Be("privateStaticField");
             field.FieldType.Should().Be<string>();
         }
 
@@ -885,15 +1213,25 @@ public class TypeMemberExtensionsSpecs
 
         public static bool StaticProperty { get; set; }
 
+        protected static bool ProtectedStaticProperty { get; set; }
+
+        private static bool PrivateStaticProperty { get; set; }
+
         internal bool InternalProperty { get; set; }
 
         protected internal bool InternalProtectedProperty { get; set; }
+
+        protected bool ProtectedProperty { get; set; }
+
+        private bool PrivateProperty { get; set; }
 
         string IInterfaceWithSingleProperty.ExplicitlyImplementedProperty { get; set; }
 
         public string InterfaceProperty { get; set; }
 
 #pragma warning disable CS0649 // Field is never assigned to, and will always have its default value
+#pragma warning disable CS0169 // Field is never used
+#pragma warning disable CA1823 // Unused field
         public string NormalField;
 
         internal string InternalField;
@@ -901,6 +1239,39 @@ public class TypeMemberExtensionsSpecs
         public static bool StaticField;
 
         protected internal string ProtectedInternalField;
+
+        protected string protectedField;
+
+        private string privateField;
+
+        protected static string protectedStaticField;
+
+        private static string privateStaticField;
+#pragma warning restore CA1823 // Unused field
+#pragma warning restore CS0169 // Field is never used
+#pragma warning restore CS0649 // Field is never assigned to, and will always have its default value
+    }
+
+    private class ClassWithFieldsOfEveryVisibility
+    {
+#pragma warning disable CS0649 // Field is never assigned to, and will always have its default value
+#pragma warning disable CS0169 // Field is never used
+#pragma warning disable CA1823 // Unused field
+        public string PublicField;
+
+        internal string InternalField;
+
+        protected internal string ProtectedInternalField;
+
+        protected string protectedField;
+
+        private string privateField;
+
+        protected static string protectedStaticField;
+
+        private static string privateStaticField;
+#pragma warning restore CA1823 // Unused field
+#pragma warning restore CS0169 // Field is never used
 #pragma warning restore CS0649 // Field is never assigned to, and will always have its default value
     }
 
@@ -914,6 +1285,14 @@ public class TypeMemberExtensionsSpecs
 
     private class BaseClass
     {
+#pragma warning disable CS0649 // Field is never assigned to, and will always have its default value
+#pragma warning disable CS0169 // Field is never used
+#pragma warning disable CA1823 // Unused field
+        private string privateBaseField;
+#pragma warning restore CA1823 // Unused field
+#pragma warning restore CS0169 // Field is never used
+#pragma warning restore CS0649 // Field is never assigned to, and will always have its default value
+
         [UsedImplicitly]
         public string NewProperty { get; set; }
     }

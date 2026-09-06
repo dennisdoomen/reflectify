@@ -151,6 +151,111 @@ public class PropertyInfoExtensionsSpecs
         }
     }
 
+    public class IsProtected
+    {
+        [Fact]
+        public void A_protected_property_is_protected()
+        {
+            // Act
+            PropertyInfo property = typeof(ClassWithVariousProperties).GetProperty(
+                "ProtectedProperty", BindingFlags.NonPublic | BindingFlags.Instance);
+
+            // Assert
+            property.IsProtected().Should().BeTrue();
+        }
+
+        [Fact]
+        public void A_protected_internal_property_is_not_protected()
+        {
+            // Act
+            PropertyInfo property = typeof(ClassWithVariousProperties).GetProperty(
+                "ProtectedInternalProperty", BindingFlags.NonPublic | BindingFlags.Instance);
+
+            // Assert
+            property.IsProtected().Should().BeFalse();
+        }
+
+        [Fact]
+        public void A_public_property_is_not_protected()
+        {
+            // Act
+            PropertyInfo property = typeof(ClassWithVariousProperties).GetProperty(
+                "PublicProperty", BindingFlags.Public | BindingFlags.Instance);
+
+            // Assert
+            property.IsProtected().Should().BeFalse();
+        }
+
+        [Fact]
+        public void A_property_with_a_protected_getter_is_protected()
+        {
+            // Act
+            PropertyInfo property = typeof(ClassWithVariousProperties).GetProperty(
+                "ProtectedGetterProperty", BindingFlags.Public | BindingFlags.Instance);
+
+            // Assert
+            property.IsProtected().Should().BeTrue();
+        }
+    }
+
+    public class IsPrivate
+    {
+        [Fact]
+        public void A_private_property_is_private()
+        {
+            // Act
+            PropertyInfo property = typeof(ClassWithVariousProperties).GetProperty(
+                "PrivateProperty", BindingFlags.NonPublic | BindingFlags.Instance);
+
+            // Assert
+            property.IsPrivate().Should().BeTrue();
+        }
+
+        [Fact]
+        public void An_internal_property_is_not_private()
+        {
+            // Act
+            PropertyInfo property = typeof(ClassWithVariousProperties).GetProperty(
+                "InternalProperty", BindingFlags.NonPublic | BindingFlags.Instance);
+
+            // Assert
+            property.IsPrivate().Should().BeFalse();
+        }
+
+        [Fact]
+        public void A_public_property_is_not_private()
+        {
+            // Act
+            PropertyInfo property = typeof(ClassWithVariousProperties).GetProperty(
+                "PublicProperty", BindingFlags.Public | BindingFlags.Instance);
+
+            // Assert
+            property.IsPrivate().Should().BeFalse();
+        }
+
+        [Fact]
+        public void A_property_with_a_private_setter_is_private()
+        {
+            // Act
+            PropertyInfo property = typeof(ClassWithVariousProperties).GetProperty(
+                "PrivateSetterProperty", BindingFlags.Public | BindingFlags.Instance);
+
+            // Assert
+            property.IsPrivate().Should().BeTrue();
+        }
+
+        [Fact]
+        public void A_protected_internal_property_is_not_private()
+        {
+            // Act
+            PropertyInfo property = typeof(ClassWithVariousProperties).GetProperty(
+                "ProtectedInternalProperty", BindingFlags.NonPublic | BindingFlags.Instance);
+
+            // Assert
+            property.IsPrivate().Should().BeFalse();
+        }
+    }
+
     public class IsAbstract
     {
         [Fact]
@@ -415,6 +520,18 @@ public class PropertyInfoExtensionsSpecs
 
         [UsedImplicitly]
         protected internal string ProtectedInternalProperty { get; set; }
+
+        [UsedImplicitly]
+        protected string ProtectedProperty { get; set; }
+
+        [UsedImplicitly]
+        private string PrivateProperty { get; set; }
+
+        [UsedImplicitly]
+        public string ProtectedGetterProperty { protected get; set; }
+
+        [UsedImplicitly]
+        public string PrivateSetterProperty { get; private set; }
     }
 
 #nullable enable
