@@ -155,6 +155,20 @@ internal static class TypeMetaDataExtensions
     }
 
     /// <summary>
+    /// Returns the single attribute of type <typeparamref name="TAttribute"/> that decorates the type or its
+    /// inheritance hierarchy, or <see langword="null" /> if no such attribute is found.
+    /// </summary>
+    /// <remarks>
+    /// If the type is decorated with more than one attribute of type <typeparamref name="TAttribute"/>,
+    /// the first one is returned.
+    /// </remarks>
+    public static TAttribute GetAttribute<TAttribute>(this Type type)
+        where TAttribute : Attribute
+    {
+        return type.GetMatchingAttributes<TAttribute>().FirstOrDefault();
+    }
+
+    /// <summary>
     /// Retrieves an array of attributes of a specified type that match the provided predicate.
     /// </summary>
     public static TAttribute[] GetMatchingAttributes<TAttribute>(this Type type, Func<TAttribute, bool> predicate)

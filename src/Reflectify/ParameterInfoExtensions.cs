@@ -75,6 +75,44 @@ internal static class ParameterInfoExtensions
     }
 
     /// <summary>
+    /// Returns the single attribute of type <typeparamref name="TAttribute"/> that decorates the parameter,
+    /// or <see langword="null" /> if the parameter is not decorated with such an attribute.
+    /// </summary>
+    /// <remarks>
+    /// If the parameter is decorated with more than one attribute of type <typeparamref name="TAttribute"/>,
+    /// the first one is returned.
+    /// </remarks>
+    public static TAttribute GetAttribute<TAttribute>(this ParameterInfo parameter)
+        where TAttribute : Attribute
+    {
+        return parameter.GetMatchingAttributes<TAttribute>().FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Retrieves all attributes of type <typeparamref name="TAttribute"/> that decorate the parameter.
+    /// </summary>
+    public static TAttribute[] GetMatchingAttributes<TAttribute>(this ParameterInfo parameter)
+        where TAttribute : Attribute
+    {
+        return parameter.GetCustomAttributes<TAttribute>(inherit: false).ToArray();
+    }
+
+    /// <summary>
+    /// Retrieves all attributes of type <typeparamref name="TAttribute"/> that decorate the parameter and
+    /// match the provided predicate.
+    /// </summary>
+    public static TAttribute[] GetMatchingAttributes<TAttribute>(this ParameterInfo parameter, Func<TAttribute, bool> predicate)
+        where TAttribute : Attribute
+    {
+        if (predicate is null)
+        {
+            throw new ArgumentNullException(nameof(predicate));
+        }
+
+        return parameter.GetMatchingAttributes<TAttribute>().Where(predicate).ToArray();
+    }
+
+    /// <summary>
     /// Determines the nullability of the parameter, taking into account nullable reference type metadata as well as
     /// nullable value types (see <see cref="TypeExtensions.NullableOrActualType"/>).
     /// </summary>

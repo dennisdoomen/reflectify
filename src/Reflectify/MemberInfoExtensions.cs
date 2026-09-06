@@ -76,6 +76,49 @@ internal static class MemberInfoExtensions
     }
 
     /// <summary>
+    /// Returns the single attribute of type <typeparamref name="TAttribute"/> that decorates the member,
+    /// or <see langword="null" /> if the member is not decorated with such an attribute.
+    /// </summary>
+    /// <remarks>
+    /// If the member is decorated with more than one attribute of type <typeparamref name="TAttribute"/>,
+    /// the first one is returned. This method does not consider attributes declared on the member's
+    /// overridden or base definitions; use <see cref="GetMatchingAttributes{TAttribute}(MemberInfo)"/> together
+    /// with <see cref="HasAttributeInHierarchy{TAttribute}(MemberInfo)"/> if you need to walk the hierarchy.
+    /// </remarks>
+    public static TAttribute GetAttribute<TAttribute>(this MemberInfo member)
+        where TAttribute : Attribute
+    {
+        return member.GetMatchingAttributes<TAttribute>().FirstOrDefault();
+    }
+
+    /// <summary>
+    /// Retrieves all attributes of type <typeparamref name="TAttribute"/> that decorate the member.
+    /// </summary>
+    public static TAttribute[] GetMatchingAttributes<TAttribute>(this MemberInfo member)
+        where TAttribute : Attribute
+    {
+        // Do not use MemberInfo.IsDefined
+        // There is an issue with PropertyInfo and EventInfo preventing the inherit option to work.
+        // https://github.com/dotnet/runtime/issues/30219
+        return Attribute.GetCustomAttributes(member, typeof(TAttribute), inherit: false).Cast<TAttribute>().ToArray();
+    }
+
+    /// <summary>
+    /// Retrieves all attributes of type <typeparamref name="TAttribute"/> that decorate the member and
+    /// match the provided predicate.
+    /// </summary>
+    public static TAttribute[] GetMatchingAttributes<TAttribute>(this MemberInfo member, Func<TAttribute, bool> predicate)
+        where TAttribute : Attribute
+    {
+        if (predicate is null)
+        {
+            throw new ArgumentNullException(nameof(predicate));
+        }
+
+        return member.GetMatchingAttributes<TAttribute>().Where(predicate).ToArray();
+    }
+
+    /// <summary>
     /// Returns <see langword="true" /> if the member is marked as obsolete.
     /// </summary>
     public static bool IsObsolete(this MemberInfo member)

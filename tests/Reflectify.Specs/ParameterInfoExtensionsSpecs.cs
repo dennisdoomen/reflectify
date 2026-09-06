@@ -130,6 +130,140 @@ public class ParameterInfoExtensionsSpecs
         act.Should().Throw<ArgumentNullException>().WithMessage("*predicate*");
     }
 
+    public class GetAttribute
+    {
+        [Fact]
+        public void Returns_null_when_the_parameter_has_no_matching_attribute()
+        {
+            // Arrange
+            ParameterInfo parameter = typeof(ClassWithAttributedParameter).GetMethod("Method")!.GetParameters()[0];
+
+            // Act
+            var result = parameter.GetAttribute<CLSCompliantAttribute>();
+
+            // Assert
+            result.Should().BeNull();
+        }
+
+        [Fact]
+        public void Returns_the_single_matching_attribute()
+        {
+            // Arrange
+            ParameterInfo parameter = typeof(ClassWithAttributedParameter).GetMethod("Method")!.GetParameters()[0];
+
+            // Act
+            var result = parameter.GetAttribute<CustomParameterAttribute>();
+
+            // Assert
+            result.Should().NotBeNull();
+            result.Reason.Should().Be("Specific reason");
+        }
+
+        [Fact]
+        public void Returns_the_first_attribute_when_multiple_are_present()
+        {
+            // Arrange
+            ParameterInfo parameter =
+                typeof(ClassWithMultiplyAttributedParameter).GetMethod("Method")!.GetParameters()[0];
+
+            // Act
+            var result = parameter.GetAttribute<RepeatableParameterAttribute>();
+
+            // Assert
+            result.Should().BeEquivalentTo(new { Tag = "First" });
+        }
+    }
+
+    public class GetMatchingAttributes
+    {
+        [Fact]
+        public void Returns_an_empty_array_when_the_parameter_has_no_matching_attribute()
+        {
+            // Arrange
+            ParameterInfo parameter = typeof(ClassWithAttributedParameter).GetMethod("Method")!.GetParameters()[0];
+
+            // Act
+            var result = parameter.GetMatchingAttributes<CLSCompliantAttribute>();
+
+            // Assert
+            result.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void Returns_the_single_matching_attribute()
+        {
+            // Arrange
+            ParameterInfo parameter = typeof(ClassWithAttributedParameter).GetMethod("Method")!.GetParameters()[0];
+
+            // Act
+            var result = parameter.GetMatchingAttributes<CustomParameterAttribute>();
+
+            // Assert
+            result.Should().ContainSingle().Which.Reason.Should().Be("Specific reason");
+        }
+
+        [Fact]
+        public void Returns_all_attributes_when_multiple_are_present()
+        {
+            // Arrange
+            ParameterInfo parameter =
+                typeof(ClassWithMultiplyAttributedParameter).GetMethod("Method")!.GetParameters()[0];
+
+            // Act
+            var result = parameter.GetMatchingAttributes<RepeatableParameterAttribute>();
+
+            // Assert
+            result.Should().HaveCount(2);
+        }
+
+        [Fact]
+        public void Can_filter_the_matching_attributes_using_a_predicate()
+        {
+            // Arrange
+            ParameterInfo parameter =
+                typeof(ClassWithMultiplyAttributedParameter).GetMethod("Method")!.GetParameters()[0];
+
+            // Act
+            var result = parameter.GetMatchingAttributes<RepeatableParameterAttribute>(a => a.Tag == "First");
+
+            // Assert
+            result.Should().ContainSingle().Which.Tag.Should().Be("First");
+        }
+
+        [Fact]
+        public void The_predicate_must_not_be_null()
+        {
+            // Arrange
+            ParameterInfo parameter = typeof(ClassWithAttributedParameter).GetMethod("Method")!.GetParameters()[0];
+
+            // Act
+            var act = () => parameter.GetMatchingAttributes<CustomParameterAttribute>(null);
+
+            // Assert
+            act.Should().Throw<ArgumentNullException>().WithMessage("*predicate*");
+        }
+    }
+
+    [AttributeUsage(AttributeTargets.Parameter, AllowMultiple = true)]
+    private sealed class RepeatableParameterAttribute : Attribute
+    {
+        public RepeatableParameterAttribute(string tag)
+        {
+            Tag = tag;
+        }
+
+        public string Tag { get; }
+    }
+
+    private class ClassWithMultiplyAttributedParameter
+    {
+        public void Method(
+            [RepeatableParameter("First")] [RepeatableParameter("Second")]
+            string value)
+        {
+        }
+    }
+
     [AttributeUsage(AttributeTargets.Parameter)]
     private sealed class CustomParameterAttribute : Attribute
     {
