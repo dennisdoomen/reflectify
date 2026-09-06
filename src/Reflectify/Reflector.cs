@@ -332,31 +332,22 @@ internal sealed class Reflector(Type typeToReflect, MemberKind kind)
             if (property.IsIndexer())
             {
                 // We explicitly skip indexers
+                return;
             }
-            else if (!kindMap.TryGetValue(name, out var existingKind))
+
+            if (!kindMap.TryGetValue(name, out var existingKind))
             {
                 kindMap[name] = kind;
                 propertiesWithName.Add((name, property));
+                return;
             }
-            else if (existingKind == PropertyKind.ExplicitlyImplemented && kind == PropertyKind.Normal)
+
+            if (existingKind == PropertyKind.ExplicitlyImplemented && kind == PropertyKind.Normal)
             {
-                // Normal properties have priority over explicitly implemented properties
                 kindMap[name] = kind;
 
-                for (int i = 0; i < propertiesWithName.Count; i++)
-                {
-                    if (propertiesWithName[i].Name == name)
-                    {
-                        propertiesWithName[i] = (name, property);
-                        return;
-                    }
-                }
-
-                propertiesWithName.Add((name, property));
-            }
-            else
-            {
-                // Property with that name already exists
+                int index = propertiesWithName.FindIndex(propertyWithName => propertyWithName.Name == name);
+                propertiesWithName[index] = (name, property);
             }
         }
     }
@@ -408,26 +399,15 @@ internal sealed class Reflector(Type typeToReflect, MemberKind kind)
             {
                 kindMap[name] = kind;
                 eventsWithName.Add((name, @event));
+                return;
             }
-            else if (existingKind == EventKind.ExplicitlyImplemented && kind == EventKind.Normal)
+
+            if (existingKind == EventKind.ExplicitlyImplemented && kind == EventKind.Normal)
             {
-                // Normal events have priority over explicitly implemented events
                 kindMap[name] = kind;
 
-                for (int i = 0; i < eventsWithName.Count; i++)
-                {
-                    if (eventsWithName[i].Name == name)
-                    {
-                        eventsWithName[i] = (name, @event);
-                        return;
-                    }
-                }
-
-                eventsWithName.Add((name, @event));
-            }
-            else
-            {
-                // Event with that name already exists
+                int index = eventsWithName.FindIndex(eventWithName => eventWithName.Name == name);
+                eventsWithName[index] = (name, @event);
             }
         }
     }
