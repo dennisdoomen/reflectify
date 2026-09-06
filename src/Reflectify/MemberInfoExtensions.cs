@@ -11,6 +11,15 @@ using System.Reflection;
 
 namespace Reflectify;
 
+/// <summary>
+/// Specifies whether obsolescence should be evaluated only on the member itself or also on its declaring type.
+/// </summary>
+public enum ObsoleteMemberFilter
+{
+    MemberOnly,
+    IncludeDeclaringType,
+}
+
 #if REFLECTIFY_COMPILE
 public static class MemberInfoExtensions
 #else
@@ -49,6 +58,28 @@ internal static class MemberInfoExtensions
         // There is an issue with PropertyInfo and EventInfo preventing the inherit option to work.
         // https://github.com/dotnet/runtime/issues/30219
         return Attribute.IsDefined(member, typeof(TAttribute), inherit: true);
+    }
+
+    /// <summary>
+    /// Returns <see langword="true" /> if the member is marked as obsolete.
+    /// </summary>
+    public static bool IsObsolete(this MemberInfo member)
+    {
+        return member.HasAttribute<ObsoleteAttribute>() ||
+               member.DeclaringType?.IsObsolete() == true;
+    }
+
+    /// <summary>
+    /// Returns <see langword="true" /> if the member is obsolete according to the selected scope.
+    /// </summary>
+    public static bool IsObsolete(this MemberInfo member, ObsoleteMemberFilter filter)
+    {
+        if (filter == ObsoleteMemberFilter.MemberOnly)
+        {
+            return member.HasAttribute<ObsoleteAttribute>();
+        }
+
+        return member.IsObsolete();
     }
 
     /// <summary>

@@ -3,6 +3,7 @@ using System.Reflection;
 using FluentAssertions;
 using Xunit;
 
+#pragma warning disable CS0612 // Type or member is obsolete
 #pragma warning disable CS0649 // Field is never assigned to, and will always have its default value
 
 namespace Reflectify.Specs;
@@ -95,6 +96,76 @@ public class MemberInfoExtensionsSpecs
         private class DerivedClass : BaseClass
         {
             public override void Method()
+            {
+            }
+        }
+    }
+
+    public class IsObsolete
+    {
+        [Fact]
+        public void An_obsolete_member_is_obsolete()
+        {
+            // Arrange
+            MemberInfo member = typeof(ClassWithAttributedMember).GetMethod("Method");
+
+            // Act
+            bool result = member.IsObsolete();
+
+            // Assert
+            result.Should().BeTrue();
+        }
+
+        [Fact]
+        public void A_member_on_an_obsolete_type_is_obsolete_by_default()
+        {
+            // Arrange
+            MemberInfo member = typeof(ObsoleteClass).GetMethod("Method");
+
+            // Act
+            bool result = member.IsObsolete();
+
+            // Assert
+            result.Should().BeTrue();
+        }
+
+        [Fact]
+        public void A_member_on_an_obsolete_type_can_ignore_the_declaring_type()
+        {
+            // Arrange
+            MemberInfo member = typeof(ObsoleteClass).GetMethod("Method");
+
+            // Act
+            bool result = member.IsObsolete(ObsoleteMemberFilter.MemberOnly);
+
+            // Assert
+            result.Should().BeFalse();
+        }
+
+        [Fact]
+        public void A_member_on_a_normal_type_is_not_obsolete()
+        {
+            // Arrange
+            MemberInfo member = typeof(NormalClass).GetMethod("Method");
+
+            // Act
+            bool result = member.IsObsolete();
+
+            // Assert
+            result.Should().BeFalse();
+        }
+
+        [Obsolete]
+        private class ObsoleteClass
+        {
+            public void Method()
+            {
+            }
+        }
+
+        private class NormalClass
+        {
+            public void Method()
             {
             }
         }
