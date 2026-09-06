@@ -56,6 +56,51 @@ public class MemberInfoExtensionsSpecs
             member.HasAttribute<ObsoleteAttribute>(predicate =>
                 predicate.Message.Contains("*Other*")).Should().BeFalse();
         }
+
+        [Fact]
+        public void Does_not_find_an_inheritable_attribute_on_an_overridden_method_using_a_predicate()
+        {
+            // Arrange
+            var member = typeof(DerivedClass).GetMethod("Method");
+
+            // Act / Assert
+            member.HasAttribute<InheritableAttribute>(_ => true).Should().BeFalse();
+        }
+
+        [Fact]
+        public void Does_not_find_an_inheritable_attribute_on_an_overridden_property_using_a_predicate()
+        {
+            // Arrange
+            var member = typeof(DerivedClass).GetProperty("Property");
+
+            // Act / Assert
+            member.HasAttribute<InheritableAttribute>(_ => true).Should().BeFalse();
+        }
+
+        [AttributeUsage(AttributeTargets.Method | AttributeTargets.Property, Inherited = true)]
+        private sealed class InheritableAttribute : Attribute
+        {
+        }
+
+        private class BaseClass
+        {
+            [Inheritable]
+            public virtual void Method()
+            {
+            }
+
+            [Inheritable]
+            public virtual string Property => "";
+        }
+
+        private class DerivedClass : BaseClass
+        {
+            public override void Method()
+            {
+            }
+
+            public override string Property => "";
+        }
     }
 
     public class HasAttributeInHierarchy
@@ -78,6 +123,50 @@ public class MemberInfoExtensionsSpecs
 
             // Act / Assert
             member.HasAttributeInHierarchy<CLSCompliantAttribute>().Should().BeFalse();
+        }
+
+        [Fact]
+        public void Can_find_an_inheritable_attribute_on_an_overridden_method_using_a_specific_predicate()
+        {
+            // Arrange
+            var member = typeof(DerivedClass).GetMethod("Method");
+
+            // Act / Assert
+            member.HasAttributeInHierarchy<InheritableAttribute>(_ => true).Should().BeTrue();
+        }
+
+        [Fact]
+        public void Finds_an_attribute_on_a_member_using_a_specific_predicate()
+        {
+            // Arrange
+            var member = typeof(ClassWithAttributedMember).GetMethod("Method");
+
+            // Act / Assert
+            member.HasAttributeInHierarchy<ObsoleteAttribute>(attribute =>
+                attribute.Message!.StartsWith("Specific")).Should().BeTrue();
+        }
+
+        [Fact]
+        public void Ignores_the_attribute_in_hierarchy_if_the_predicate_does_not_match()
+        {
+            // Arrange
+            var member = typeof(DerivedClass).GetMethod("Method");
+
+            // Act / Assert
+            member.HasAttributeInHierarchy<InheritableAttribute>(_ => false).Should().BeFalse();
+        }
+
+        [Fact]
+        public void The_predicate_for_a_member_in_hierarchy_must_not_be_null()
+        {
+            // Arrange
+            var member = typeof(ClassWithAttributedMember).GetMethod("Method");
+
+            // Act
+            var act = () => member.HasAttributeInHierarchy<ObsoleteAttribute>(null);
+
+            // Assert
+            act.Should().Throw<ArgumentNullException>().WithMessage("*predicate*");
         }
 
         [AttributeUsage(AttributeTargets.Method, Inherited = true)]

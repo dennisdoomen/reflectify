@@ -48,7 +48,7 @@ internal static class MemberInfoExtensions
             throw new ArgumentNullException(nameof(predicate));
         }
 
-        return member.GetCustomAttributes<TAttribute>().Any(a => predicate(a));
+        return member.GetCustomAttributes<TAttribute>(inherit: false).Any(a => predicate(a));
     }
 
     public static bool HasAttributeInHierarchy<TAttribute>(this MemberInfo member)
@@ -58,6 +58,21 @@ internal static class MemberInfoExtensions
         // There is an issue with PropertyInfo and EventInfo preventing the inherit option to work.
         // https://github.com/dotnet/runtime/issues/30219
         return Attribute.IsDefined(member, typeof(TAttribute), inherit: true);
+    }
+
+    /// <summary>
+    /// Determines whether the member or one of its overridden definitions has an attribute of the specified type
+    /// that matches the predicate.
+    /// </summary>
+    public static bool HasAttributeInHierarchy<TAttribute>(this MemberInfo member, Func<TAttribute, bool> predicate)
+        where TAttribute : Attribute
+    {
+        if (predicate is null)
+        {
+            throw new ArgumentNullException(nameof(predicate));
+        }
+
+        return member.GetCustomAttributes<TAttribute>(inherit: true).Any(a => predicate(a));
     }
 
     /// <summary>

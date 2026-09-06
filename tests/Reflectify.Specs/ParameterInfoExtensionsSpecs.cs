@@ -84,6 +84,52 @@ public class ParameterInfoExtensionsSpecs
         parameter.HasAttributeInHierarchy<CLSCompliantAttribute>().Should().BeFalse();
     }
 
+    [Fact]
+    public void Can_determine_a_parameter_has_an_attribute_in_hierarchy_using_a_specific_predicate()
+    {
+        // Arrange
+        ParameterInfo parameter = typeof(ClassWithAttributedParameter).GetMethod("Method")!.GetParameters()[0];
+
+        // Act / Assert
+        parameter.HasAttributeInHierarchy<CustomParameterAttribute>(attribute =>
+            attribute.Reason.StartsWith("Specific")).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Finds_an_overridden_parameter_attribute_in_hierarchy_using_a_specific_predicate()
+    {
+        // Arrange
+        ParameterInfo parameter = typeof(DerivedClass).GetMethod("Method")!.GetParameters()[0];
+
+        // Act / Assert
+        parameter.HasAttributeInHierarchy<CustomParameterAttribute>(attribute =>
+            attribute.Reason.StartsWith("Inherited")).Should().BeTrue();
+    }
+
+    [Fact]
+    public void Ignores_the_attribute_in_hierarchy_if_the_predicate_for_a_parameter_does_not_match()
+    {
+        // Arrange
+        ParameterInfo parameter = typeof(ClassWithAttributedParameter).GetMethod("Method")!.GetParameters()[0];
+
+        // Act / Assert
+        parameter.HasAttributeInHierarchy<CustomParameterAttribute>(attribute =>
+            attribute.Reason.Contains("Other")).Should().BeFalse();
+    }
+
+    [Fact]
+    public void The_predicate_for_a_parameter_in_hierarchy_must_not_be_null()
+    {
+        // Arrange
+        ParameterInfo parameter = typeof(ClassWithAttributedParameter).GetMethod("Method")!.GetParameters()[0];
+
+        // Act
+        var act = () => parameter.HasAttributeInHierarchy<CustomParameterAttribute>(null);
+
+        // Assert
+        act.Should().Throw<ArgumentNullException>().WithMessage("*predicate*");
+    }
+
     [AttributeUsage(AttributeTargets.Parameter)]
     private sealed class CustomParameterAttribute : Attribute
     {
@@ -98,6 +144,20 @@ public class ParameterInfoExtensionsSpecs
     private class ClassWithAttributedParameter
     {
         public void Method([CustomParameter("Specific reason")] string value)
+        {
+        }
+    }
+
+    private class BaseClass
+    {
+        public virtual void Method([CustomParameter("Inherited reason")] string value)
+        {
+        }
+    }
+
+    private class DerivedClass : BaseClass
+    {
+        public override void Method(string value)
         {
         }
     }
