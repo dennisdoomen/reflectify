@@ -13,7 +13,7 @@ using System.Reflection;
 namespace Reflectify;
 
 /// <summary>
-/// Helper class to get all the public and internal fields and properties from a type.
+/// Helper class to get all the public and internal fields, properties, events and methods from a type.
 /// </summary>
 #if REFLECTIFY_COMPILE
 public sealed class Reflector(Type typeToReflect, MemberKind kind)
@@ -27,6 +27,7 @@ internal sealed class Reflector(Type typeToReflect, MemberKind kind)
     private volatile PropertyInfo[] cachedProperties;
     private volatile FieldInfo[] cachedFields;
     private volatile EventInfo[] cachedEvents;
+    private volatile MethodInfo[] cachedMethods;
 
     public MemberInfo[] Members => [.. Properties, .. Fields];
 
@@ -84,6 +85,25 @@ internal sealed class Reflector(Type typeToReflect, MemberKind kind)
             }
 
             return cachedEvents;
+        }
+    }
+
+    public MethodInfo[] Methods
+    {
+        get
+        {
+            if (cachedMethods is null)
+            {
+                lock (lazyLoadingLock)
+                {
+                    if (cachedMethods is null)
+                    {
+                        cachedMethods = LoadMethods(typeToReflect, kind);
+                    }
+                }
+            }
+
+            return cachedMethods;
         }
     }
 
@@ -286,6 +306,91 @@ internal sealed class Reflector(Type typeToReflect, MemberKind kind)
     }
 #pragma warning restore AV1561
 
+    private static MethodInfo[] LoadMethods(Type typeToReflect, MemberKind kind)
+    {
+        var selectedMethods = new OrderedMethodCollection();
+
+        while (typeToReflect != null && typeToReflect != typeof(object))
+        {
+            BindingFlags flags = BindingFlags.DeclaredOnly | BindingFlags.Public | BindingFlags.NonPublic;
+            flags |= (kind & MemberKind.Static) != MemberKind.None ? BindingFlags.Static : BindingFlags.Instance;
+
+            // Property/event accessors, indexers, operators and other compiler-generated members are always
+            // special-named. They are excluded by default so that GetMethods only returns the methods a caller
+            // would normally write and call explicitly.
+            var allMethods = typeToReflect.GetMethods(flags).Where(m => !m.IsSpecialName).ToArray();
+
+            AddNormalMethods(kind, allMethods, selectedMethods);
+
+            AddExplicitlyImplementedMethods(kind, allMethods, selectedMethods);
+
+            AddInterfaceMethods(typeToReflect, kind, flags, selectedMethods);
+
+            // Move to the base type
+            typeToReflect = typeToReflect.BaseType;
+        }
+
+        return selectedMethods.ToArray();
+    }
+
+    private static void AddNormalMethods(MemberKind kind, MethodInfo[] allMethods, OrderedMethodCollection selectedMethods)
+    {
+        if ((kind & (MemberKind.Public | MemberKind.Internal | MemberKind.Protected | MemberKind.Private |
+                MemberKind.ExplicitlyImplemented)) != MemberKind.None)
+        {
+            foreach (var method in allMethods)
+            {
+                if (HasVisibility(kind, method) && !method.IsExplicitlyImplemented())
+                {
+                    selectedMethods.AddNormal(method);
+                }
+            }
+        }
+    }
+
+    private static bool HasVisibility(MemberKind kind, MethodInfo method)
+    {
+        return ((kind & MemberKind.Public) != MemberKind.None && method.IsPublic) ||
+               ((kind & MemberKind.Internal) != MemberKind.None && (method.IsAssembly || method.IsFamilyOrAssembly)) ||
+               ((kind & MemberKind.Protected) != MemberKind.None && method.IsFamily) ||
+               ((kind & MemberKind.Private) != MemberKind.None && method.IsPrivate);
+    }
+
+    private static void AddExplicitlyImplementedMethods(MemberKind kind, MethodInfo[] allMethods, OrderedMethodCollection selectedMethods)
+    {
+        if ((kind & MemberKind.ExplicitlyImplemented) != MemberKind.None)
+        {
+            foreach (var method in allMethods)
+            {
+                if (method.IsExplicitlyImplemented())
+                {
+                    selectedMethods.AddExplicitlyImplemented(method);
+                }
+            }
+        }
+    }
+
+#pragma warning disable AV1561
+    private static void AddInterfaceMethods(Type typeToReflect, MemberKind kind, BindingFlags flags, OrderedMethodCollection selectedMethods)
+    {
+        if ((kind & MemberKind.DefaultInterfaceProperties) != MemberKind.None || typeToReflect.IsInterface)
+        {
+            var interfaces = typeToReflect.GetInterfaces();
+
+            foreach (var interfaceType in interfaces)
+            {
+                foreach (var method in interfaceType.GetMethods(flags).Where(m => !m.IsSpecialName))
+                {
+                    if (!method.IsAbstract || typeToReflect.IsInterface)
+                    {
+                        selectedMethods.AddFromInterface(method);
+                    }
+                }
+            }
+        }
+    }
+#pragma warning restore AV1561
+
     private sealed class OrderedPropertyCollection
     {
         private readonly Dictionary<string, PropertyKind> kindMap = new();
@@ -408,6 +513,82 @@ internal sealed class Reflector(Type typeToReflect, MemberKind kind)
 
                 int index = eventsWithName.FindIndex(eventWithName => eventWithName.Name == name);
                 eventsWithName[index] = (name, @event);
+            }
+        }
+    }
+
+    private sealed class OrderedMethodCollection
+    {
+        private readonly Dictionary<string, MethodKind> kindMap = new();
+        private readonly List<(string Signature, MethodInfo Method)> methodsWithSignature = new();
+
+        public MethodInfo[] ToArray()
+        {
+            var result = new MethodInfo[methodsWithSignature.Count];
+
+            for (int i = 0; i < methodsWithSignature.Count; i++)
+            {
+                result[i] = methodsWithSignature[i].Method;
+            }
+
+            return result;
+        }
+
+        private enum MethodKind
+        {
+            Normal,
+            ExplicitlyImplemented,
+            Interface
+        }
+
+        public void AddExplicitlyImplemented(MethodInfo method)
+        {
+            var name = method.Name.Split('.').Last();
+
+            Add(GetSignature(name, method), method, MethodKind.ExplicitlyImplemented);
+        }
+
+        public void AddNormal(MethodInfo method)
+        {
+            Add(GetSignature(method.Name, method), method, MethodKind.Normal);
+        }
+
+        public void AddFromInterface(MethodInfo method)
+        {
+            Add(GetSignature(method.Name, method), method, MethodKind.Interface);
+        }
+
+        // The signature (name, generic arity and parameter types) is what identifies "the same method" across a
+        // type hierarchy. Two overloads of the same name are different methods and must both be kept, while an
+        // override or a method hidden with `new` shares the signature of the base method it replaces and must be
+        // de-duplicated in favor of the most derived one (the one encountered first while walking the hierarchy).
+        private static string GetSignature(string name, MethodInfo method)
+        {
+            string parameters = string.Join(",", method.GetParameters().Select(p => p.ParameterType.FullName));
+
+            return method.IsGenericMethodDefinition
+                ? $"{name}`{method.GetGenericArguments().Length}({parameters})"
+                : $"{name}({parameters})";
+        }
+
+        private void Add(string signature, MethodInfo method, MethodKind kind)
+        {
+            if (!kindMap.TryGetValue(signature, out var existingKind))
+            {
+                kindMap[signature] = kind;
+                methodsWithSignature.Add((signature, method));
+            }
+            else if (existingKind == MethodKind.ExplicitlyImplemented && kind == MethodKind.Normal)
+            {
+                // Normal methods have priority over explicitly implemented methods
+                kindMap[signature] = kind;
+
+                int index = methodsWithSignature.FindIndex(methodWithSignature => methodWithSignature.Signature == signature);
+                methodsWithSignature[index] = (signature, method);
+            }
+            else
+            {
+                // Method with that signature already exists
             }
         }
     }

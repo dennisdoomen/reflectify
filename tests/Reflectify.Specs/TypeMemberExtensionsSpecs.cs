@@ -1005,10 +1005,20 @@ public class TypeMemberExtensionsSpecs
         public void Can_find_a_static_method()
         {
             // Act
-            var method = typeof(ClassWithMethods).FindMethod("StaticMethod", MemberKind.Public);
+            var method = typeof(ClassWithMethods).FindMethod("StaticMethod", MemberKind.Public | MemberKind.Static);
 
             // Assert
             method.Should().NotBeNull();
+        }
+
+        [Fact]
+        public void Cannot_find_a_static_method_if_you_dont_ask_for_it()
+        {
+            // Act
+            var method = typeof(ClassWithMethods).FindMethod("StaticMethod", MemberKind.Public);
+
+            // Assert
+            method.Should().BeNull();
         }
 
         [Fact]
@@ -1118,6 +1128,104 @@ public class TypeMemberExtensionsSpecs
             act.Should().Throw<ArgumentException>().WithMessage("*method name*");
         }
 
+        [Fact]
+        public void An_internal_method_declared_on_a_base_type_is_found()
+        {
+            // Act
+            var method = typeof(SubClassHidingABaseMethod).FindMethod("InternalBaseMethod", MemberKind.Internal);
+
+            // Assert
+            method.Should().NotBeNull();
+            method.DeclaringType.Should().Be(typeof(BaseClassWithAHiddenMethod));
+        }
+
+        [Fact]
+        public void A_protected_internal_method_declared_on_a_base_type_is_found()
+        {
+            // Act / Assert
+            typeof(SubClassHidingABaseMethod)
+                .HasMethod("ProtectedInternalBaseMethod", MemberKind.Internal)
+                .Should().BeTrue();
+        }
+
+        [Fact]
+        public void A_private_method_declared_on_a_base_type_is_not_an_internal_one()
+        {
+            // Act
+            var method = typeof(SubClassHidingABaseMethod).FindMethod("PrivateBaseMethod", MemberKind.Internal);
+
+            // Assert
+            method.Should().BeNull();
+        }
+
+        [Fact]
+        public void A_private_method_declared_on_a_base_type_is_found_if_you_ask_for_private_ones()
+        {
+            // Act
+            var method = typeof(SubClassHidingABaseMethod).FindMethod("PrivateBaseMethod", MemberKind.Private);
+
+            // Assert
+            method.Should().NotBeNull();
+            method.DeclaringType.Should().Be(typeof(BaseClassWithAHiddenMethod));
+        }
+
+        [Fact]
+        public void A_protected_method_declared_on_a_base_type_is_found_if_you_ask_for_protected_ones()
+        {
+            // Act / Assert
+            typeof(SubClassHidingABaseMethod)
+                .HasMethod("ProtectedBaseMethod", MemberKind.Protected)
+                .Should().BeTrue();
+        }
+
+        [Fact]
+        public void A_method_hidden_by_a_subclass_resolves_to_the_most_derived_one()
+        {
+            // Act
+            var method = typeof(SubClassHidingABaseMethod).FindMethod("HiddenMethod", MemberKind.Public);
+
+            // Assert
+            method.Should().NotBeNull();
+            method.DeclaringType.Should().Be(typeof(SubClassHidingABaseMethod));
+        }
+
+        [Fact]
+        public void A_property_accessor_does_not_count_as_a_method()
+        {
+            // Act
+            var method = typeof(SubClassHidingABaseMethod).FindMethod("get_Foo", MemberKind.Public);
+
+            // Assert
+            method.Should().BeNull();
+        }
+
+        private class BaseClassWithAHiddenMethod
+        {
+            [UsedImplicitly]
+            public string HiddenMethod() => "base";
+
+            [UsedImplicitly]
+            internal bool InternalBaseMethod() => true;
+
+            [UsedImplicitly]
+            protected internal bool ProtectedInternalBaseMethod() => true;
+
+            [UsedImplicitly]
+            private bool PrivateBaseMethod() => true;
+
+            [UsedImplicitly]
+            protected bool ProtectedBaseMethod() => true;
+        }
+
+        private sealed class SubClassHidingABaseMethod : BaseClassWithAHiddenMethod
+        {
+            [UsedImplicitly]
+            public new string HiddenMethod() => "sub";
+
+            [UsedImplicitly]
+            public int Foo { get; set; }
+        }
+
         private class ClassWithMethods
         {
             [UsedImplicitly]
@@ -1144,6 +1252,383 @@ public class TypeMemberExtensionsSpecs
             protected internal void ProtectedInternalMethod()
             {
             }
+        }
+    }
+
+    public class GetMethods
+    {
+        [Fact]
+        public void Can_get_normal_public_methods()
+        {
+            // Act
+            var methods = typeof(SuperClassWithMethods).GetMethods(MemberKind.Public);
+
+            // Assert
+            methods.Select(m => m.Name).Should().BeEquivalentTo(
+                "NormalMethod", "OverriddenMethod", "HiddenMethod", "InterfaceMethod");
+        }
+
+        [Fact]
+        public void Can_get_all_public_explicit_and_default_instance_interface_methods()
+        {
+            // Act
+            var methods = typeof(SuperClassWithMethods).GetMethods(
+                MemberKind.Public | MemberKind.ExplicitlyImplemented | MemberKind.DefaultInterfaceProperties);
+
+            // Assert
+            methods.Select(m => m.Name).Should().BeEquivalentTo([
+                "NormalMethod", "OverriddenMethod", "HiddenMethod", "InterfaceMethod",
+                $"{typeof(IInterfaceWithSingleMethod).FullName!.Replace("+", ".")}.ExplicitlyImplementedMethod",
+#if NETCOREAPP3_0_OR_GREATER
+                "DefaultMethod"
+#endif
+            ]);
+        }
+
+        [Fact]
+        public void Can_get_all_methods_from_an_interface()
+        {
+            // Act
+            var methods = typeof(IInterfaceWithDefaultMethod).GetMethods(MemberKind.Public);
+
+            // Assert
+            methods.Select(m => m.Name).Should().BeEquivalentTo([
+                "InterfaceMethod",
+                "ExplicitlyImplementedMethod",
+#if NETCOREAPP3_0_OR_GREATER
+                "DefaultMethod"
+#endif
+            ]);
+        }
+
+        [Fact]
+        public void Can_get_explicit_methods_only()
+        {
+            // Act
+            var methods = typeof(SuperClassWithMethods).GetMethods(MemberKind.ExplicitlyImplemented);
+
+            // Assert
+            methods.Select(m => m.Name).Should().BeEquivalentTo(
+                $"{typeof(IInterfaceWithSingleMethod).FullName!.Replace("+", ".")}.ExplicitlyImplementedMethod");
+        }
+
+        [Fact]
+        public void Prefers_normal_method_over_explicitly_implemented_one()
+        {
+            // Act
+            var methods = typeof(ClassWithExplicitAndNormalMethod).GetMethods(
+                MemberKind.Public | MemberKind.ExplicitlyImplemented);
+
+            // Assert
+            methods.Should().ContainSingle()
+                .Which.Should().Match<MethodInfo>(m =>
+                    m.Name == "ExplicitlyImplementedMethod" && m.DeclaringType == typeof(ClassWithExplicitAndNormalMethod));
+        }
+
+        [Fact]
+        public void A_normal_method_wins_from_an_explicitly_implemented_one_in_a_base_class()
+        {
+            // Act
+            var methods = typeof(DerivedClassWithNormalMethod).GetMethods(
+                MemberKind.Public | MemberKind.ExplicitlyImplemented);
+
+            // Assert
+            methods.Should().ContainSingle()
+                .Which.DeclaringType.Should().Be(typeof(DerivedClassWithNormalMethod));
+        }
+
+        [Fact]
+        public void A_normal_method_in_a_base_class_wins_from_an_explicitly_implemented_one()
+        {
+            // Act
+            var methods = typeof(DerivedClassWithExplicitMethod).GetMethods(
+                MemberKind.Public | MemberKind.ExplicitlyImplemented);
+
+            // Assert
+            methods.Should().ContainSingle()
+                .Which.DeclaringType.Should().Be(typeof(BaseClassWithNormalMethod));
+        }
+
+#if NETCOREAPP3_0_OR_GREATER
+        [Fact]
+        public void Can_get_default_interface_methods_only()
+        {
+            // Act
+            var methods = typeof(SuperClassWithMethods).GetMethods(MemberKind.DefaultInterfaceProperties);
+
+            // Assert
+            methods.Select(m => m.Name).Should().BeEquivalentTo("DefaultMethod");
+        }
+#endif
+
+        [Fact]
+        public void Can_get_internal_methods()
+        {
+            // Act
+            var methods = typeof(SuperClassWithMethods).GetMethods(MemberKind.Internal);
+
+            // Assert
+            methods.Select(m => m.Name).Should().BeEquivalentTo("InternalMethod", "InternalProtectedMethod");
+        }
+
+        [Fact]
+        public void Can_get_all_public_static_methods()
+        {
+            // Act
+            var methods = typeof(SuperClassWithMethods).GetMethods(MemberKind.Public | MemberKind.Static);
+
+            // Assert
+            methods.Select(m => m.Name).Should().BeEquivalentTo("StaticMethod");
+        }
+
+        [Fact]
+        public void Supports_returning_no_methods_if_asked_for()
+        {
+            // Act
+            var methods = typeof(SuperClassWithMethods).GetMethods(MemberKind.None);
+
+            // Assert
+            methods.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void Asking_for_instance_methods_leaves_out_the_static_ones()
+        {
+            // Act
+            var methods = typeof(SuperClassWithMethods).GetMethods(MemberKind.Public | MemberKind.Internal);
+
+            // Assert
+            methods.Should().NotContain(m => m.IsStatic);
+            methods.Should().Contain(m => m.Name == "NormalMethod");
+        }
+
+        [Fact]
+        public void Asking_for_static_methods_leaves_out_the_instance_ones()
+        {
+            // Act
+            var methods = typeof(SuperClassWithMethods).GetMethods(
+                MemberKind.Public | MemberKind.Internal | MemberKind.Static);
+
+            // Assert
+            methods.Should().OnlyContain(m => m.IsStatic);
+            methods.Should().Contain(m => m.Name == "StaticMethod");
+        }
+
+        [Fact]
+        public void Static_on_its_own_says_nothing_about_visibility_so_nothing_matches()
+        {
+            // Act
+            var methods = typeof(SuperClassWithMethods).GetMethods(MemberKind.Static);
+
+            // Assert
+            methods.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void Can_get_protected_methods()
+        {
+            // Act
+            var methods = typeof(SuperClassWithMethods).GetMethods(MemberKind.Protected);
+
+            // Assert
+            methods.Select(m => m.Name).Should().BeEquivalentTo("ProtectedMethod");
+        }
+
+        [Fact]
+        public void Can_get_private_methods()
+        {
+            // Act
+            var methods = typeof(SuperClassWithMethods).GetMethods(MemberKind.Private);
+
+            // Assert
+            methods.Select(m => m.Name).Should().BeEquivalentTo("PrivateMethod");
+        }
+
+        [Fact]
+        public void Can_combine_protected_and_private_methods_with_public()
+        {
+            // Act
+            var methods = typeof(SuperClassWithMethods).GetMethods(
+                MemberKind.Public | MemberKind.Protected | MemberKind.Private);
+
+            // Assert
+            methods.Select(m => m.Name).Should().BeEquivalentTo(
+                "NormalMethod", "OverriddenMethod", "HiddenMethod", "InterfaceMethod", "ProtectedMethod", "PrivateMethod");
+        }
+
+        [Fact]
+        public void A_private_method_declared_on_a_base_type_is_reachable_because_every_type_is_inspected_separately()
+        {
+            // Act
+            var methods = typeof(SuperClassWithMethods).GetMethods(MemberKind.Private);
+
+            // Assert
+            methods.Should().ContainSingle(m => m.Name == "PrivateMethod")
+                .Which.DeclaringType.Should().Be(typeof(BaseClassWithMethods));
+        }
+
+        [Fact]
+        public void Does_not_duplicate_an_overridden_method()
+        {
+            // Act
+            var methods = typeof(SuperClassWithMethods).GetMethods(MemberKind.Public);
+
+            // Assert
+            methods.Should().ContainSingle(m => m.Name == "OverriddenMethod")
+                .Which.DeclaringType.Should().Be(typeof(SuperClassWithMethods));
+        }
+
+        [Fact]
+        public void Does_not_duplicate_a_method_hidden_with_the_new_keyword()
+        {
+            // Act
+            var methods = typeof(SuperClassWithMethods).GetMethods(MemberKind.Public);
+
+            // Assert
+            methods.Should().ContainSingle(m => m.Name == "HiddenMethod")
+                .Which.DeclaringType.Should().Be(typeof(SuperClassWithMethods));
+        }
+
+        [Fact]
+        public void Ignores_special_name_methods_like_property_accessors_events_indexers_and_operators()
+        {
+            // Act
+            var methods = typeof(ClassWithSpecialNameMethods).GetMethods(MemberKind.Public);
+
+            // Assert
+            methods.Should().BeEmpty();
+        }
+
+        [Fact]
+        public void Can_get_method_overloads()
+        {
+            // Act
+            var methods = typeof(ClassWithMethodOverloads).GetMethods(MemberKind.Public);
+
+            // Assert
+            methods.Should().HaveCount(2);
+            methods.Should().Contain(m => m.Name == "Do" && m.GetParameters().Length == 0);
+            methods.Should().Contain(m => m.Name == "Do" && m.GetParameters().Length == 1);
+        }
+
+        private class BaseClassWithMethods
+        {
+            [UsedImplicitly]
+            public virtual string OverriddenMethod() => "base";
+
+            [UsedImplicitly]
+            public string HiddenMethod() => "base";
+
+            [UsedImplicitly]
+            private string PrivateMethod() => "private";
+        }
+
+        private class SuperClassWithMethods : BaseClassWithMethods, IInterfaceWithDefaultMethod
+        {
+            [UsedImplicitly]
+            public string NormalMethod() => "normal";
+
+            [UsedImplicitly]
+            public override string OverriddenMethod() => "super";
+
+            [UsedImplicitly]
+            public new string HiddenMethod() => "super";
+
+            [UsedImplicitly]
+            public static bool StaticMethod() => true;
+
+            [UsedImplicitly]
+            internal bool InternalMethod() => true;
+
+            [UsedImplicitly]
+            protected internal bool InternalProtectedMethod() => true;
+
+            [UsedImplicitly]
+            protected string ProtectedMethod() => "protected";
+
+            string IInterfaceWithSingleMethod.ExplicitlyImplementedMethod() => "explicit";
+
+            [UsedImplicitly]
+            public string InterfaceMethod() => "interface";
+        }
+
+        private interface IInterfaceWithSingleMethod
+        {
+            [UsedImplicitly]
+            string ExplicitlyImplementedMethod();
+        }
+
+        private interface IInterfaceWithDefaultMethod : IInterfaceWithSingleMethod
+        {
+            [UsedImplicitly]
+            string InterfaceMethod();
+
+#if NETCOREAPP3_0_OR_GREATER
+            [UsedImplicitly]
+            string DefaultMethod() => "Default";
+#endif
+        }
+
+        private sealed class ClassWithExplicitAndNormalMethod : IInterfaceWithSingleMethod
+        {
+            string IInterfaceWithSingleMethod.ExplicitlyImplementedMethod() => "explicit";
+
+            [UsedImplicitly]
+            public string ExplicitlyImplementedMethod() => "normal";
+        }
+
+        private class BaseClassWithExplicitMethod : IInterfaceWithSingleMethod
+        {
+            string IInterfaceWithSingleMethod.ExplicitlyImplementedMethod() => "explicit";
+        }
+
+        private sealed class DerivedClassWithNormalMethod : BaseClassWithExplicitMethod
+        {
+            [UsedImplicitly]
+            public string ExplicitlyImplementedMethod() => "normal";
+        }
+
+        private class BaseClassWithNormalMethod
+        {
+            [UsedImplicitly]
+            public string ExplicitlyImplementedMethod() => "normal";
+        }
+
+        private sealed class DerivedClassWithExplicitMethod : BaseClassWithNormalMethod, IInterfaceWithSingleMethod
+        {
+            string IInterfaceWithSingleMethod.ExplicitlyImplementedMethod() => "explicit";
+        }
+
+        private sealed class ClassWithMethodOverloads
+        {
+            [UsedImplicitly]
+            public void Do()
+            {
+            }
+
+            [UsedImplicitly]
+            public void Do(int number)
+            {
+            }
+        }
+
+        private sealed class ClassWithSpecialNameMethods
+        {
+            [UsedImplicitly]
+            public int Foo { get; set; }
+
+            [UsedImplicitly]
+            public event EventHandler SomeEvent
+            {
+                add { }
+                remove { }
+            }
+
+            [UsedImplicitly]
+            public string this[int index] => index.ToString(CultureInfo.InvariantCulture);
+
+            [UsedImplicitly]
+            public static explicit operator int(ClassWithSpecialNameMethods instance) => 42;
         }
     }
 
