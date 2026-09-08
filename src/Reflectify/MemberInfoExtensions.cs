@@ -14,7 +14,12 @@ namespace Reflectify;
 /// <summary>
 /// Specifies whether obsolescence should be evaluated only on the member itself or also on its declaring type.
 /// </summary>
+#if REFLECTIFY_COMPILE
 public enum ObsoleteMemberFilter
+#else
+[global::Microsoft.CodeAnalysis.Embedded]
+internal enum ObsoleteMemberFilter
+#endif
 {
     MemberOnly,
     IncludeDeclaringType,
