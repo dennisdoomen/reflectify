@@ -299,7 +299,9 @@ public class TypeMetaDataExtensionsSpecs
         {
         }
 
+#pragma warning disable MA0070 // This spec verifies obsolete types without a message.
         [Obsolete]
+#pragma warning restore MA0070
         private class ObsoleteTypeWithoutMessage
         {
         }
