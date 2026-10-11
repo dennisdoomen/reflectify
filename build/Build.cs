@@ -126,8 +126,25 @@ class Build : NukeBuild
             Information($"Code coverage report: \x1b]8;;file://{link.Replace('\\', '/')}\x1b\\{link}\x1b]8;;\x1b\\");
         });
 
+    Target PreparePackageReadme => _ => _
+        .Executes(() =>
+        {
+            var content = (RootDirectory / "README.md").ReadAllText();
+            var sections = content.Split(["\n## "], StringSplitOptions.RemoveEmptyEntries);
+
+            string[] headersToInclude = ["About", "How do I use it?", "Versioning", "Credits"];
+
+            var readmeContent = "## " + string.Join("\n## ", sections
+                .Where(section => headersToInclude.Any(header =>
+                    section.StartsWith(header, StringComparison.OrdinalIgnoreCase))));
+
+            ArtifactsDirectory.CreateDirectory();
+            (ArtifactsDirectory / "Readme.md").WriteAllText(readmeContent);
+        });
+
     Target Pack => _ => _
         .DependsOn(CalculateNugetVersion)
+        .DependsOn(PreparePackageReadme)
         .DependsOn(CodeCoverage)
         .Executes(() =>
         {
