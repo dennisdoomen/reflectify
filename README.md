@@ -165,7 +165,7 @@ This library uses [Semantic Versioning](https://semver.org/) to give meaning to 
 ## Credits
 This library wouldn't have been possible without the following tools, packages and companies:
 
-* [Nuke](https://nuke.build/) - Smart automation for DevOps teams and CI/CD pipelines
+* [Fallout](https://github.com/Fallout-build/Fallout) - Build automation for C# and .NET, the successor to Nuke
 * [Rider](https://www.jetbrains.com/rider/) - The world's most loved .NET and game dev IDE
 * [xUnit](https://xunit.net/) - Community-focused unit testing tool for .NET.
 * [Coverlet](https://github.com/coverlet-coverage/coverlet) - Cross platform code coverage for .NET
